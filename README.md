@@ -30,7 +30,11 @@ Add an Expo package to an app with `pnpm --filter @firstpass/vantage exec expo i
 
 ## Test builds
 
-Builds run on Expo Application Services (EAS). `preview` makes an Android APK that installs directly on a tablet:
+Builds run on Expo Application Services (EAS). `preview` makes an Android APK that installs directly on a tablet.
+
+From GitHub: **Actions → EAS build → Run workflow**, pick the app, platform and profile. The run summary links to the build on expo.dev, where the APK downloads when it finishes. It needs the repository secret `EXPO_TOKEN` (an Expo access token).
+
+From a terminal:
 
 ```bash
 cd apps/vantage
