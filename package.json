@@ -1,0 +1,19 @@
+{
+  "name": "firstpass",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "check": "turbo run typecheck test",
+    "vantage": "pnpm --filter @firstpass/vantage start",
+    "vision": "pnpm --filter @firstpass/vision start"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.7",
+    "typescript": "~6.0.3"
+  }
+}
