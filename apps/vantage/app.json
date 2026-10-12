@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "FirstPass Vantage",
+    "slug": "firstpass-vantage",
+    "version": "0.1.0",
+    "scheme": "firstpass-vantage",
+    "orientation": "landscape",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#000000",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.firstpass.vantage"
+    },
+    "android": {
+      "package": "com.firstpass.vantage",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F172A"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0F172A"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

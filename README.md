@@ -1,2 +1,46 @@
-# firstPass
-Firstpass Vision and Vantage
+# FirstPass
+
+Live netball stats. **FirstPass Vantage** is the statistician's tablet app for entering stats during a game; **FirstPass Vision** is the coach's live view on phone, tablet or web.
+
+## Layout
+
+| Path | What it is |
+| --- | --- |
+| `apps/vantage` | Expo tablet app for the statistician (Android first, then iPad), landscape |
+| `apps/vision` | Expo app for coaches: phone, tablet and web, portrait and landscape |
+| `packages/engine` | Pure stats engine shared by both apps: fold events into game state |
+| `packages/schema` | Event model shared by the apps and the database |
+| `packages/ui` | Brand colours and shared UI |
+| `supabase` | Database migrations and Edge Functions (from Phase 3) |
+
+`apps/hq` (admin web app) and `packages/config` (Net Points values, thresholds) arrive in later phases.
+
+## Getting started
+
+Needs Node 22 and pnpm 10 (`corepack enable`).
+
+```bash
+pnpm install
+pnpm check            # typecheck and test everything
+pnpm vantage          # start the Vantage dev server
+pnpm vision           # start the Vision dev server (press w for web)
+```
+
+Add an Expo package to an app with `pnpm --filter @firstpass/vantage exec expo install <package>` so its version matches the Expo SDK.
+
+## Test builds
+
+Builds run on Expo Application Services (EAS). `preview` makes an Android APK that installs directly on a tablet:
+
+```bash
+cd apps/vantage
+npx eas-cli build --profile preview --platform android
+```
+
+## Design documents
+
+- [Build plan](https://claude.ai/code/artifact/16d36552-7dab-4301-8280-ff02ce0f42c5)
+- [Architecture](https://claude.ai/code/artifact/dbe32d48-8bae-490b-bfab-aac7d8d27bc8)
+- [Vantage UI](https://claude.ai/code/artifact/3549aa2e-b657-4996-a019-a8abe8f8c632)
+- [Vision UI](https://claude.ai/code/artifact/a1453da0-971a-4205-966a-3b75187bffea)
+- [System design](https://claude.ai/code/artifact/2dc70ba4-1bb4-43a9-a2e2-aa9a59f7bda5)
