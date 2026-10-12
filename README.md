@@ -34,6 +34,8 @@ Builds run on Expo Application Services (EAS). `preview` makes an Android APK th
 
 From GitHub: **Actions → EAS build → Run workflow**, pick the app, platform and profile. The run summary links to the build on expo.dev, where the APK downloads when it finishes. It needs the repository secret `EXPO_TOKEN` (an Expo access token).
 
+For the test tablets, builds go to Google Play internal testing instead: see [docs/play-internal-testing.md](docs/play-internal-testing.md).
+
 From a terminal:
 
 ```bash

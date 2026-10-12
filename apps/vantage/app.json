@@ -10,10 +10,10 @@
     "backgroundColor": "#000000",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.firstpass.vantage"
+      "bundleIdentifier": "au.pivt.firstpass.vantage"
     },
     "android": {
-      "package": "com.firstpass.vantage",
+      "package": "au.pivt.firstpass.vantage",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0F172A"
