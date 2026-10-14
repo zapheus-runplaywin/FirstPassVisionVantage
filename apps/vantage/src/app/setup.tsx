@@ -1,11 +1,12 @@
 import { POSITIONS, type CourtEnd, type EntryMode, type Position, type Team } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Btn, s, Seg } from '../components/ui';
 import { startNewGame } from '../game/newGame';
+import { loadMemberships, useSession, type Membership } from '../lib/auth';
 
 const EXAMPLE: Record<Position, string> = { GS: '7 Priya', GA: '9 Jade', WA: '5 Kim', C: '4 Tess', WD: '6 Lily', GD: '3 Sam', GK: '1 Ruby' };
 
@@ -18,6 +19,21 @@ export default function Setup() {
   const [cp, setCp] = useState<Team>('us');
   const [lineup, setLineup] = useState<Record<Position, string>>(EXAMPLE);
   const [bench, setBench] = useState('8 Jo, 11 Mia, 14 Ava, 15 Zoe');
+  const session = useSession();
+  const [clubs, setClubs] = useState<Membership[]>([]);
+  const [clubId, setClubId] = useState<string | null>(null);
+  const [teamId, setTeamId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!session) return;
+    loadMemberships().then(
+      (m) => {
+        setClubs(m);
+        if (m.length === 1) setClubId(m[0]?.clubId ?? null);
+      },
+      () => setClubs([]),
+    );
+  }, [session]);
+  const club = clubs.find((c) => c.clubId === clubId);
 
   const start = () => {
     const quarterMs = Math.max(1, Math.min(20, Number(minutes) || 15)) * 60_000;
@@ -29,6 +45,7 @@ export default function Setup() {
         .split(',')
         .map((b) => b.trim())
         .filter(Boolean),
+      { clubId, teamId: club?.teams.some((t) => t.id === teamId) ? teamId : null },
     );
     router.replace({ pathname: '/game/[id]', params: { id } });
   };
@@ -43,6 +60,26 @@ export default function Setup() {
           <Field label="Opposition" value={them} onChange={setThem} />
           <Field label="Quarter length (minutes)" value={minutes} onChange={setMinutes} numeric />
         </View>
+        {session && clubs.length ? (
+          <>
+            <Text style={s.h2}>Record for</Text>
+            <Seg
+              value={clubId ?? 'none'}
+              onChange={(v) => setClubId(v === 'none' ? null : v)}
+              options={[...clubs.map((c) => [c.clubId, c.clubName] as const), ['none', 'This device only'] as const]}
+            />
+            {club && club.teams.length ? (
+              <>
+                <Text style={s.h2}>Team</Text>
+                <Seg
+                  value={teamId ?? 'none'}
+                  onChange={(v) => setTeamId(v === 'none' ? null : v)}
+                  options={[...club.teams.map((t) => [t.id, t.name] as const), ['none', 'Not set'] as const]}
+                />
+              </>
+            ) : null}
+          </>
+        ) : null}
         <Text style={s.h2}>Entry mode</Text>
         <Seg value={mode} onChange={setMode} options={[['core', 'Core'], ['full', 'Full Net Points']]} />
         <Text style={s.h2}>Which end do we attack in Q1, as you see the court?</Text>
