@@ -16,8 +16,12 @@ export const colors = {
   surface: brand.deepNavy,
   court: brand.pacificBlue,
   courtLine: '#FFFFFF',
+  surfaceLine: '#263247',
   target: '#FFFFFF',
   targetText: brand.deepNavy,
+  /** Tap targets that are not the expected choice right now: dimmed, never moved. */
+  targetDim: 'rgba(255,255,255,0.14)',
+  targetDimText: 'rgba(255,255,255,0.55)',
   text: '#FFFFFF',
   textMuted: 'rgba(255,255,255,0.6)',
   ourTeam: brand.pacificBlue,

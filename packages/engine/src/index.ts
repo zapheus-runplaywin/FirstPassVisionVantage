@@ -1,3 +1,4 @@
+export { clockState, type ClockState } from './clock';
 export { fold } from './fold';
 export { findSeqGaps, type SeqGap } from './seq';
 export { liveEvents, type LiveEvent } from './corrections';

@@ -119,6 +119,8 @@ export type GameEvent =
   | EventEnvelope<'period_start', PeriodStartPayload>
   | EventEnvelope<'clock_start', ClockPayload>
   | EventEnvelope<'clock_stop', ClockPayload>
+  /** The statistician ended the quarter; the break review follows. */
+  | EventEnvelope<'period_end', ClockPayload>
   | EventEnvelope<'action', ActionPayload>
   | EventEnvelope<'flag', FlagPayload>
   | EventEnvelope<'lineup_change', LineupChangePayload>
