@@ -23,3 +23,4 @@ export {
   type QuarterStats,
 } from './game';
 export { amberReasons, LONG_GAP_MS, reviewGame, type AmberReason, type ReviewIssue } from './review';
+export { NET_POINTS, netPoints, type NetPoints, type NetPointsTable } from './netPoints';
