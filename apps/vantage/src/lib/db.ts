@@ -32,7 +32,7 @@ function open(): SQLiteDatabase {
     CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);
   `);
   // Sync columns, added after the first release.
-  for (const col of ['club_id TEXT', 'team_id TEXT', 'pair_code TEXT', 'acked_seq INTEGER NOT NULL DEFAULT 0']) {
+  for (const col of ['club_code TEXT', 'team_id TEXT', 'fixture_id TEXT', 'pair_code TEXT', 'acked_seq INTEGER NOT NULL DEFAULT 0']) {
     try {
       db.execSync(`ALTER TABLE games ADD COLUMN ${col}`);
     } catch {
@@ -54,9 +54,11 @@ export interface SavedGame {
   id: string;
   config: GameConfig;
   createdAt: string;
-  /** The club and team on the server; null while the game is local only. */
-  clubId: string | null;
+  /** The club whose database the game goes to; null while the game is local only. */
+  clubCode: string | null;
+  /** The squad or team and PlayHQ fixture it was started from, when known. */
   teamId: string | null;
+  fixtureId: string | null;
   /** Set once the server has the game; shown to the coach and shadow. */
   pairCode: string | null;
   /** Highest seq the server has confirmed. */
@@ -67,21 +69,23 @@ interface GameRow {
   id: string;
   config: string;
   created_at: string;
-  club_id: string | null;
+  club_code: string | null;
   team_id: string | null;
+  fixture_id: string | null;
   pair_code: string | null;
   acked_seq: number;
 }
 
-const GAME_COLS = 'id, config, created_at, club_id, team_id, pair_code, acked_seq';
+const GAME_COLS = 'id, config, created_at, club_code, team_id, fixture_id, pair_code, acked_seq';
 
 function toGame(r: GameRow): SavedGame {
   return {
     id: r.id,
     config: JSON.parse(r.config) as GameConfig,
     createdAt: r.created_at,
-    clubId: r.club_id,
+    clubCode: r.club_code,
     teamId: r.team_id,
+    fixtureId: r.fixture_id,
     pairCode: r.pair_code,
     ackedSeq: r.acked_seq,
   };
@@ -102,12 +106,13 @@ export function createGame(game: SavedGame, events: readonly GameEvent[]): void 
   const d = open();
   d.withTransactionSync(() => {
     d.runSync(
-      'INSERT INTO games (id, config, created_at, club_id, team_id) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO games (id, config, created_at, club_code, team_id, fixture_id) VALUES (?, ?, ?, ?, ?, ?)',
       game.id,
       JSON.stringify(game.config),
       game.createdAt,
-      game.clubId,
+      game.clubCode,
       game.teamId,
+      game.fixtureId,
     );
     for (const e of events) insert(d, e);
   });

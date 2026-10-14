@@ -11,7 +11,7 @@ export function startNewGame(
   mode: EntryMode,
   lineup: Partial<Record<Position, string>>,
   bench: string[],
-  club: { clubId: string | null; teamId: string | null } = { clubId: null, teamId: null },
+  club: { clubCode: string | null; teamId: string | null; fixtureId: string | null } = { clubCode: null, teamId: null, fixtureId: null },
 ): string {
   const id = uuidv7();
   const recordedAt = new Date().toISOString();

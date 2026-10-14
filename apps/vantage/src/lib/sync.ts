@@ -2,7 +2,8 @@ import type { GameEvent } from '@firstpass/schema';
 import { AppState } from 'react-native';
 import { useEffect, useState } from 'react';
 import { getGame, getKv, loadUnsent, markSynced, setKv } from './db';
-import { supabase } from './supabase';
+import { client, clientFor } from './supabase';
+import { findClub } from './clubs';
 import { uuidv7 } from './uuid';
 
 /*
@@ -44,10 +45,11 @@ export function deviceId(): string {
 
 /** Sends everything unsent for one game. Safe to call often; runs one at a time per game. */
 export async function syncGame(gameId: string): Promise<void> {
-  if (!supabase) return publish(gameId, { kind: 'off' });
   const game = getGame(gameId);
   if (!game) return;
-  if (!game.clubId) return publish(gameId, { kind: 'local only' });
+  const club = findClub(game.clubCode);
+  if (!club) return publish(gameId, { kind: game.clubCode ? 'off' : 'local only' });
+  const supabase = clientFor(club);
   if (running.has(gameId)) return;
   running.add(gameId);
   try {
@@ -58,10 +60,10 @@ export async function syncGame(gameId: string): Promise<void> {
     if (!pairCode) {
       const created = await supabase.rpc('create_game', {
         p_id: game.id,
-        p_club_id: game.clubId,
         p_config: game.config,
         p_device_id: deviceId(),
         p_team_id: game.teamId,
+        p_fixture_id: game.fixtureId,
       });
       if (created.error) throw created.error;
       pairCode = (created.data as { pair_code: string }).pair_code;
@@ -72,7 +74,7 @@ export async function syncGame(gameId: string): Promise<void> {
     for (;;) {
       const batch: GameEvent[] = loadUnsent(gameId, acked, BATCH);
       if (batch.length === 0) break;
-      const res = await supabase.rpc('append_events', { p_game_id: gameId, p_stream: 'primary', p_events: batch });
+      const res = await supabase.rpc('append_game_events', { p_game_id: gameId, p_stream: 'primary', p_events: batch });
       if (res.error) throw res.error;
       const confirmed = res.data as number;
       if (confirmed <= acked) throw new Error('server did not advance');
@@ -103,7 +105,7 @@ export async function syncGame(gameId: string): Promise<void> {
 
 /** The sync state of one game, kicked whenever `events` changes or the app returns. */
 export function useSync(gameId: string, eventCount: number): SyncState {
-  const [state, setState] = useState<SyncState>(() => states.get(gameId) ?? { kind: supabase ? 'queued' : 'off', count: 0 } as SyncState);
+  const [state, setState] = useState<SyncState>(() => states.get(gameId) ?? ({ kind: client() ? 'queued' : 'off', count: 0 } as SyncState));
   useEffect(() => {
     const set = listeners.get(gameId) ?? new Set();
     set.add(setState);

@@ -2,11 +2,12 @@ import type { Session } from '@supabase/supabase-js';
 import { makeRedirectUri } from 'expo-auth-session';
 import { openAuthSessionAsync } from 'expo-web-browser';
 import { useEffect, useState } from 'react';
-import { supabase } from './supabase';
+import { client, useClub } from './supabase';
 
-/** Google sign-in through Supabase Auth, in the system browser, back to the app by its scheme. */
+/** Google sign-in through the club's Supabase Auth, in the system browser, back to the app by its scheme. */
 export async function signInWithGoogle(): Promise<void> {
-  if (!supabase) throw new Error('Sync is not configured');
+  const supabase = client();
+  if (!supabase) throw new Error('Choose your club first');
   const redirectTo = makeRedirectUri({ path: 'auth' });
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -22,36 +23,80 @@ export async function signInWithGoogle(): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
-  await supabase?.auth.signOut();
+  await client()?.auth.signOut();
 }
 
-/** The current session, kept in step with sign-in and token refresh. */
+/** The chosen club's session, kept in step with sign-in, token refresh and club changes. */
 export function useSession(): Session | null | undefined {
-  const [session, setSession] = useState<Session | null | undefined>(supabase ? undefined : null);
+  const club = useClub();
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
   useEffect(() => {
-    if (!supabase) return;
+    const supabase = client();
+    if (!supabase) {
+      setSession(null);
+      return;
+    }
+    setSession(undefined);
     void supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => data.subscription.unsubscribe();
-  }, []);
+  }, [club]);
   return session;
 }
 
-export interface Membership {
-  clubId: string;
-  clubName: string;
-  role: 'club_admin' | 'statistician' | 'coach';
-  teams: { id: string; name: string }[];
+export interface TeamEntry {
+  id: string;
+  name: string;
 }
 
-/** The clubs the signed-in user may record for, with their teams. */
-export async function loadMemberships(): Promise<Membership[]> {
+export interface FixtureEntry {
+  id: string;
+  teamId: string;
+  opponent: string | null;
+  startsAt: string;
+  timeTbc: boolean;
+  roundName: string | null;
+}
+
+export interface Athlete {
+  profileId: string;
+  name: string;
+}
+
+/** What the signed-in member may record: nothing unless they are a statistician or admin. */
+export async function loadRecorder(): Promise<{ canRecord: boolean; teams: TeamEntry[] }> {
+  const supabase = client();
+  if (!supabase) return { canRecord: false, teams: [] };
+  const allowed = await supabase.rpc('is_statistician');
+  if (allowed.error || allowed.data !== true) return { canRecord: false, teams: [] };
+  const teams = await supabase.from('teams').select('id, name').eq('archived', false).order('season', { ascending: false }).order('sort_order');
+  if (teams.error) throw teams.error;
+  return { canRecord: true, teams: (teams.data ?? []) as TeamEntry[] };
+}
+
+/** The team's PlayHQ games from yesterday on, soonest first. */
+export async function loadFixtures(teamId: string): Promise<FixtureEntry[]> {
+  const supabase = client();
   if (!supabase) return [];
-  const { data, error } = await supabase
-    .from('club_members')
-    .select('club_id, role, clubs(name, teams(id, name))')
-    .in('role', ['statistician', 'club_admin']);
-  if (error) throw error;
-  type Row = { club_id: string; role: Membership['role']; clubs: { name: string; teams: { id: string; name: string }[] } | null };
-  return (data as unknown as Row[]).map((r) => ({ clubId: r.club_id, clubName: r.clubs?.name ?? 'Club', role: r.role, teams: r.clubs?.teams ?? [] }));
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const res = await supabase
+    .from('fixtures')
+    .select('id, team_id, opponent, starts_at, time_tbc, round_name')
+    .eq('team_id', teamId)
+    .not('status', 'eq', 'BYE')
+    .gte('starts_at', since)
+    .order('starts_at')
+    .limit(6);
+  if (res.error) throw res.error;
+  type Row = { id: string; team_id: string; opponent: string | null; starts_at: string; time_tbc: boolean; round_name: string | null };
+  return ((res.data ?? []) as Row[]).map((r) => ({ id: r.id, teamId: r.team_id, opponent: r.opponent, startsAt: r.starts_at, timeTbc: r.time_tbc, roundName: r.round_name }));
+}
+
+/** This season's athletes in the team, final team first. */
+export async function loadAthletes(teamId: string): Promise<Athlete[]> {
+  const supabase = client();
+  if (!supabase) return [];
+  const res = await supabase.rpc('game_lineup', { p_team_id: teamId });
+  if (res.error) throw res.error;
+  return ((res.data ?? []) as { profile_id: string; name: string }[]).map((r) => ({ profileId: r.profile_id, name: r.name }));
 }

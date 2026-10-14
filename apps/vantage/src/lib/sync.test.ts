@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 const db = vi.hoisted(() => ({
-  game: { id: 'g1', config: {}, createdAt: '', clubId: 'club', teamId: null, pairCode: null as string | null, ackedSeq: 0 },
+  game: { id: 'g1', config: {}, createdAt: '', clubCode: 'HAWKS', teamId: null, fixtureId: 'f1', pairCode: null as string | null, ackedSeq: 0 },
   events: [] as GameEvent[],
   kv: new Map<string, string>(),
 }));
@@ -25,7 +25,8 @@ vi.mock('./db', () => ({
     if (code) db.game.pairCode = code;
   },
 }));
-vi.mock('./supabase', () => ({ supabase: { rpc, auth: { getSession } } }));
+vi.mock('./supabase', () => ({ client: () => ({ rpc, auth: { getSession } }), clientFor: () => ({ rpc, auth: { getSession } }) }));
+vi.mock('./clubs', () => ({ findClub: (code: string | null) => (code === 'HAWKS' ? { code, name: 'Hawks', supabaseUrl: '', anonKey: '' } : null) }));
 vi.mock('./uuid', () => ({ uuidv7: () => 'device-1' }));
 vi.mock('react-native', () => ({ AppState: { addEventListener: () => ({ remove() {} }) } }));
 
@@ -52,7 +53,8 @@ describe('syncGame', () => {
       return { data: last, error: null };
     });
     await syncGame('g1');
-    expect(rpc.mock.calls.map((c) => c[0])).toEqual(['create_game', 'append_events', 'append_events', 'append_events']);
+    expect(rpc.mock.calls.map((c) => c[0])).toEqual(['create_game', 'append_game_events', 'append_game_events', 'append_game_events']);
+    expect(rpc.mock.calls[0]?.[1]).toMatchObject({ p_id: 'g1', p_fixture_id: 'f1' });
     expect(rpc.mock.calls[1]?.[1].p_events).toHaveLength(200);
     expect(rpc.mock.calls[3]?.[1].p_events).toHaveLength(50);
     expect(db.game).toMatchObject({ pairCode: '482913', ackedSeq: 450 });
