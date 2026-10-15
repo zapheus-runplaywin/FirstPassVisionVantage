@@ -8,7 +8,7 @@ import { client, useClub } from './supabase';
 export async function signInWithGoogle(): Promise<void> {
   const supabase = client();
   if (!supabase) throw new Error('Choose your club first');
-  const redirectTo = makeRedirectUri({ path: 'auth' });
+  const redirectTo = makeRedirectUri({ path: 'auth-callback' });
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo, skipBrowserRedirect: true },
