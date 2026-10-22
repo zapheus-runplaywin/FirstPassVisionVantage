@@ -51,3 +51,12 @@ Read `docs/README.md` inside that installed package first, then read the relevan
 
 This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set `"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
 <!-- END:turborepo-agent-rules -->
+
+## Database migrations (Supabase)
+
+Since 30 October 2026 Supabase gives new tables in `public` no access at all, so a table nobody grants can't be reached from the apps (PostgREST answers 42501).
+
+- Every new table in `public` turns on row level security and grants its own access in the migration that creates it: `authenticated` what the apps need (usually `select, insert, update, delete`; never `truncate`), `service_role` `all`, and never `anon`. A table the apps reach only through functions gets `revoke all ... from public, anon, authenticated` instead; a partial revoke doesn't count.
+- Grant `usage` on the sequence of any `serial` column to the same roles, or use `generated always as identity`, which needs no sequence grant.
+- Revoke every new function from `public` and `anon`, and give `security definer` functions `set search_path`.
+- CI runs `scripts/check-migration-security.py` over every migration and fails on any of the above. It's copied from FirstPass HQ; keep the two in step.
