@@ -5,8 +5,10 @@ import { zoneOf } from './geometry';
 
 /**
  * One row per standing event, for lining the log up against game video.
- * `sinceStartS` counts from the first clock start (the opening whistle), so
- * video time = the whistle's time in the video + `sinceStartS`.
+ * `sinceStartS` counts from the first clock start, which follows the bench
+ * official's live scoring clock (not necessarily a whistle: centrally timed
+ * games can start late). Video time = the clock start's time in the video +
+ * `sinceStartS`.
  */
 export interface TimingRow {
   seq: number;
@@ -64,8 +66,8 @@ function clock(ms: number): string {
 export function timingRows(config: GameConfig, events: readonly GameEvent[]): TimingRow[] {
   const edited = new Set(events.flatMap((e) => (e.type === 'correction' && e.payload.op === 'edit' ? [e.payload.target] : [])));
   const live = liveEvents(events);
-  const whistle = live.find((e) => e.type === 'clock_start') ?? live[0];
-  const start = whistle ? Date.parse(whistle.recordedAt) : 0;
+  const clockStart = live.find((e) => e.type === 'clock_start') ?? live[0];
+  const start = clockStart ? Date.parse(clockStart.recordedAt) : 0;
 
   let state = initialState(config);
   const rows: TimingRow[] = [];

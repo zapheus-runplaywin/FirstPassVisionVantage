@@ -263,8 +263,8 @@ export function ExportSheet({ config, events, onClose }: { config: GameConfig; e
       <Btn label={copied === 'log' ? 'Copied' : 'Copy to clipboard'} tone="primary" onPress={() => copy('log', () => json)} />
       <Btn label={copied === 'timing' ? 'Copied' : 'Copy timing table'} onPress={() => copy('timing', () => timingTable(timingRows(config, events), '\t'))} />
       <Text style={s.muted}>
-        The timing table pastes into a spreadsheet with one row per event, corrections applied. since_start_s counts from the opening whistle: add it to the whistle&apos;s
-        time in the video to find each event.
+        The timing table pastes into a spreadsheet with one row per event, corrections applied. since_start_s counts from when the clock was first started here, which
+        should follow the live scoring clock: add it to the clock start&apos;s time in the video to find each event.
       </Text>
       <Text style={sh.mono} numberOfLines={30}>
         {json}

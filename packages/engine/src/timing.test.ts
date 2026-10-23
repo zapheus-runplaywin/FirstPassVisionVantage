@@ -31,7 +31,7 @@ function game(): GameEvent[] {
 }
 
 describe('timingRows', () => {
-  it('times every event from the opening whistle', () => {
+  it('times every event from the first clock start', () => {
     const rows = timingRows(config, game());
     expect(rows.map((r) => r.sinceStartS)).toEqual([-5, -4, 0, 1.25, 7, 15, 26.5, 35, 47]);
     expect(rows[3]).toMatchObject({ quarter: 1, gameClock: '14:59', recordedAt: '2026-10-25T09:00:06.250Z' });
