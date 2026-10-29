@@ -1,3 +1,9 @@
 packages:
   - apps/*
   - packages/*
+
+# Security fixes for packages that come in through other packages.
+# uuid: xcode (used by Expo's config plugins) still asks for uuid 7, which has
+# GHSA-w5hq-g745-h8pq; 11.1.1 keeps the same v4() call.
+overrides:
+  uuid: ^11.1.1
