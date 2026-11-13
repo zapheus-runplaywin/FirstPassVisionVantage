@@ -31,6 +31,15 @@ What the Live screen shows, from `src/stats/`:
   quarter's goals of attempts against their game, from 5 shots; everyone
   else: gains minus unforced losses this quarter, at +2 or -2) and our losses
   this quarter for the mini court (forced orange-red, unforced gold).
+- `alerts.ts` raises the alert cards. It replays the game at each goal,
+  miss, gain, loss and quarter end, and a card appears only when a rule
+  holds by 20 points (trend cards: CP, gain and turnover to goal, shooting,
+  gains dried up; "You can act" cards: a shooter hot or cold, unforced
+  losses in the attacking third). At most one new card per 90 s of game
+  time and three live at once; a card retires itself when its rule stops
+  holding. Each card says what it is measured from, such as "since our GA
+  change". Stars and dismissals are kept on the device for that game
+  (`src/live/useCardPrefs.ts`); a dismissal lasts for the quarter.
 
 What the database lets Vision do is tested in FirstPassHQ,
 `supabase/tests/vision-coach-view.sql`.
