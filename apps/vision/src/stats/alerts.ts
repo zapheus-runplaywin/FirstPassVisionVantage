@@ -91,7 +91,7 @@ export function candidates(model: GameModel): Candidate[] {
       kind: 'trend',
       gap: Math.abs(gap),
       headline: `${r.label} ${gap < 0 ? 'has dropped' : 'is up'}`,
-      count: `${goalsOf(last)} of ${last.length}, was ${pct(goalsOf(list), list.length)}`,
+      count: `${goalsOf(last)} of ${last.length} (${pct(goalsOf(last), last.length)}), was ${pct(goalsOf(list), list.length)}`,
       anchor: anchorFor(model, last),
     });
   }
@@ -102,7 +102,7 @@ export function candidates(model: GameModel): Candidate[] {
     const g = (l: typeof shots) => l.filter((s) => s.goal).length;
     const gap = g(last) / last.length - g(shots) / shots.length;
     if (gap <= -WEAK) {
-      out.push({ subject: 'shooting', kind: 'trend', gap: -gap, headline: 'Shooting has dropped', count: `${g(last)} of ${last.length}, was ${pct(g(shots), shots.length)}`, anchor: 'last 8 shots' });
+      out.push({ subject: 'shooting', kind: 'trend', gap: -gap, headline: 'Shooting has dropped', count: `${g(last)} of ${last.length} (${pct(g(last), last.length)}), was ${pct(g(shots), shots.length)}`, anchor: 'last 8 shots' });
     }
   }
 
@@ -120,7 +120,7 @@ export function candidates(model: GameModel): Candidate[] {
       kind: 'act',
       gap: Math.abs(gap),
       headline: `${name} (${position}) is ${gap < 0 ? 'cold' : 'hot'}`,
-      count: `${g(now)} of ${now.length} this quarter, ${pct(g(mine), mine.length)} for the game`,
+      count: `${g(now)} of ${now.length} (${pct(g(now), now.length)}) this quarter, ${pct(g(mine), mine.length)} for the game`,
       anchor: 'this quarter',
     });
   }

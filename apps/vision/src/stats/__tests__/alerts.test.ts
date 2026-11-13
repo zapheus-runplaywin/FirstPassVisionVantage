@@ -49,12 +49,12 @@ describe('candidates', () => {
 
   it('says CP to goal has dropped when the last 8 are well below the game', () => {
     const c = candidates(buildModel(game(['gggggggggggg' + 'mmmmmggg'])));
-    expect(c.find((x) => x.subject === 'cp')).toMatchObject({ kind: 'trend', headline: 'CP to goal has dropped', count: '3 of 8, was 75%', anchor: 'this quarter' });
+    expect(c.find((x) => x.subject === 'cp')).toMatchObject({ kind: 'trend', headline: 'CP to goal has dropped', count: '3 of 8 (38%), was 75%', anchor: 'this quarter' });
   });
 
   it('names a cold shooter, an act card', () => {
     const c = candidates(buildModel(game(['gggggggg', 'mmmmmg'])));
-    expect(c.find((x) => x.subject === 'shooter:Priya')).toMatchObject({ kind: 'act', headline: 'Priya (GS) is cold', count: '1 of 6 this quarter, 64% for the game' });
+    expect(c.find((x) => x.subject === 'shooter:Priya')).toMatchObject({ kind: 'act', headline: 'Priya (GS) is cold', count: '1 of 6 (17%) this quarter, 64% for the game' });
   });
 
   it('flags giving it away in the attacking third, not the centre third', () => {
