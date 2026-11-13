@@ -35,9 +35,10 @@ export type ReviewIssue =
 /**
  * Everything the break review lists, in log order: flags, amber actions,
  * possession chains that do not add up (two turnovers or two centre pass
- * receives in a row by one team), and long gaps between actions in `period`.
+ * receives in a row by one team), and long gaps between actions in `period`,
+ * or in every quarter for the post-game audit (`'all'`).
  */
-export function reviewGame(config: GameConfig, events: readonly GameEvent[], period: number): ReviewIssue[] {
+export function reviewGame(config: GameConfig, events: readonly GameEvent[], period: number | 'all'): ReviewIssue[] {
   const issues: ReviewIssue[] = [];
   let state = initialState(config);
   let previous: Extract<LiveEvent, { type: 'action' }> | null = null;
@@ -53,7 +54,7 @@ export function reviewGame(config: GameConfig, events: readonly GameEvent[], per
         if (previous.payload.action === 'Lost it' && a.action === 'Lost it') issues.push({ kind: 'double turnover', event, team: a.team });
         if (previous.payload.action === 'Receive' && a.action === 'Receive') issues.push({ kind: 'double receive', event, team: a.team });
       }
-      if (previous && previous.payload.period === period && a.period === period) {
+      if (previous && previous.payload.period === a.period && (period === 'all' || a.period === period)) {
         const gapMs = previous.payload.clockMs - a.clockMs;
         if (gapMs > LONG_GAP_MS) issues.push({ kind: 'long gap', event, gapMs });
       }

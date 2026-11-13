@@ -1,4 +1,4 @@
-import { lineupsAt, liveEvents, nextPeriodDefaults, resumableEnd, setClockEvent, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
+import { lineupsAt, liveEvents, nextPeriodDefaults, QUARTERS, resumableEnd, setClockEvent, timingRows, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
 import type { Action, Cause, CorrectionPayload, CourtEnd, CourtPoint, EntryMode, PlayerRef, Position, Rebound, Team } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics';
@@ -329,7 +329,9 @@ function BreakReview({
   const [end, setEnd] = useState<CourtEnd>(defaults.attackEnd);
   const [cp, setCp] = useState<Team>(defaults.centrePass);
   const [mode, setMode] = useState<EntryMode>(state.mode);
-  const fullTime = state.period >= 4;
+  const fullTime = state.period >= QUARTERS;
+  // Seconds from the first clock start, to find each issue in the game video.
+  const videoAt = useMemo(() => new Map(timingRows(config, game.events).map((r) => [r.seq, r.sinceStartS])), [config, game.events]);
   const q = state.quarters[state.period];
   const actionsThisQuarter = live.filter((e) => e.type === 'action' && e.payload.period === state.period).length;
   const other = <T extends string>(v: T, a: T, b: T) => (v === a ? b : a);
@@ -350,7 +352,7 @@ function BreakReview({
               {config.us} {state.score.us} – {state.score.them} {config.them}
             </Text>
             <Text style={s.muted}>
-              Q{state.period}: {q ? `${q.us}–${q.them}` : '0–0'} · {actionsThisQuarter} events this quarter
+              Q{state.period}: {q ? `${q.us}–${q.them}` : '0–0'} · {actionsThisQuarter} {actionsThisQuarter === 1 ? "event" : "events"} this quarter
             </Text>
           </Panel>
           {!fullTime ? (
@@ -372,14 +374,23 @@ function BreakReview({
               </Panel>
             </>
           ) : null}
-          <Text style={s.h2}>To check</Text>
+          <Text style={s.h2}>{fullTime ? 'Post-game audit' : 'To check'}</Text>
+          {fullTime ? (
+            <Text style={s.muted}>
+              Everything to check from all four quarters. The video time counts from the first clock start: add it to where the scoring clock starts in the
+              footage.
+            </Text>
+          ) : null}
           <Panel>
             {game.issues.length === 0 ? <Text style={styles.ok}>Nothing to check.</Text> : null}
             {game.issues.map((i, n) => (
               <View key={`${i.kind}-${i.event.id}-${n}`} style={styles.issue}>
-                <Text style={styles.issueWhen}>
-                  Q{i.event.payload.period} {fmtClock(i.event.payload.clockMs)}
-                </Text>
+                <View>
+                  <Text style={styles.issueWhen}>
+                    Q{i.event.payload.period} {fmtClock(i.event.payload.clockMs)}
+                  </Text>
+                  {fullTime && videoAt.has(i.event.seq) ? <Text style={styles.issueVideo}>video {fmtClock((videoAt.get(i.event.seq) ?? 0) * 1000)}</Text> : null}
+                </View>
                 <Text style={[s.text, styles.flex]}>{issueText(i, say, config)}</Text>
                 <Btn label="Fix" onPress={() => onSheet({ kind: 'edit', event: i.event })} style={styles.fix} />
               </View>
@@ -448,6 +459,7 @@ const styles = StyleSheet.create({
   ok: { color: '#5fd38d', fontWeight: '600' },
   issue: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, borderBottomColor: colors.surfaceLine, borderBottomWidth: 1 },
   issueWhen: { color: colors.textMuted, fontVariant: ['tabular-nums'], minWidth: 72 },
+  issueVideo: { color: colors.textMuted, fontSize: 12, fontVariant: ['tabular-nums'] },
   fix: { minHeight: 44 },
   breakActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
 });

@@ -4,11 +4,12 @@ import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Btn, s } from '../components/ui';
-import { listGames, type SavedGame } from '../lib/db';
+import { gameStatus, type GameStatus } from '@firstpass/engine';
+import { listGames, loadEvents, type SavedGame } from '../lib/db';
 
 export default function Home() {
-  const [games, setGames] = useState<SavedGame[]>([]);
-  useFocusEffect(useCallback(() => setGames(listGames()), []));
+  const [games, setGames] = useState<(SavedGame & { status: GameStatus })[]>([]);
+  useFocusEffect(useCallback(() => setGames(listGames().map((g) => ({ ...g, status: gameStatus(g.config, loadEvents(g.id)) }))), []));
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -27,6 +28,9 @@ export default function Home() {
               <Text style={styles.gameName}>
                 {g.config.us} v {g.config.them}
               </Text>
+              <Text style={styles.gameStatus}>
+                {g.status.label} · {g.status.score.us}–{g.status.score.them}
+              </Text>
               <Text style={styles.gameDate}>{new Date(g.createdAt).toLocaleString()}</Text>
             </View>
           </Btn>
@@ -44,5 +48,6 @@ const styles = StyleSheet.create({
   game: { alignItems: 'stretch' },
   gameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   gameName: { color: colors.targetText, fontSize: 17, fontWeight: '700' },
+  gameStatus: { color: colors.targetText, fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
   gameDate: { color: '#4b5a73', fontSize: 13 },
 });
