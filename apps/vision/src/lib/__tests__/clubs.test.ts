@@ -30,3 +30,15 @@ describe('clubs', () => {
     expect(normaliseClubCode(' ab c\t1 ')).toBe('ABC1');
   });
 });
+
+describe('the clubs in app.json', () => {
+  it('are all complete, so none is silently dropped, and include West Coast Thunder', async () => {
+    const raw = (await import('../../../app.json')).default.expo.extra.clubs as unknown[];
+    const parsed = parseClubs(raw);
+    expect(parsed).toHaveLength(raw.length);
+    expect(findClub('thunder', parsed)?.supabaseUrl).toMatch(/^https:\/\/[a-z0-9]+\.supabase\.co$/);
+    // Only the public anon key belongs here, never a service key.
+    const { atob } = globalThis as unknown as { atob: (s: string) => string };
+    for (const c of parsed) expect(JSON.parse(atob(c.anonKey.split('.')[1]!.replace(/-/g, '+').replace(/_/g, '/'))).role).toBe('anon');
+  });
+});
