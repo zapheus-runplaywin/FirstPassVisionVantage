@@ -1,22 +1,22 @@
-import { lineupsAt, liveEvents, nextPeriodDefaults, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
+import { lineupsAt, liveEvents, nextPeriodDefaults, resumableEnd, setClockEvent, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
 import type { Action, Cause, CorrectionPayload, CourtEnd, CourtPoint, EntryMode, PlayerRef, Position, Rebound, Team } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Court } from '../../components/Court';
 import { Ribbon, WhatPanel, WhoPanel } from '../../components/Panels';
-import { EditSheet, ExportSheet, StatsSheet, SubsSheet } from '../../components/Sheets';
+import { ClockSheet, EditSheet, ExportSheet, StatsSheet, SubsSheet } from '../../components/Sheets';
 import { Btn, fmtClock, Panel, s, Seg } from '../../components/ui';
 import { describe } from '../../game/describe';
 import { emptyPending, type Pending } from '../../game/entry';
 import { STARTING_LINEUP } from '../../game/newGame';
 import { useClock, useGame, type Game } from '../../game/useGame';
 
-type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' };
+type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' } | { kind: 'clock' };
 
 /** Events the statistician entered and can see, edit or undo in the ribbon. */
 function ribbonEvents(events: LiveEvent[]): LiveEvent[] {
@@ -129,9 +129,15 @@ function Entry({ game }: { game: Game }) {
     setSheet(null);
   }, [append, clock.period, clock.remainingMs, clock.running]);
 
+  // At 0:00 the clock stops but the quarter stays open: the official clock may be a little
+  // behind, and the last events still go in. The statistician ends the quarter.
+  const timeUp = clock.remainingMs <= 0;
   useEffect(() => {
-    if (clock.running && clock.remainingMs <= 0) endQuarter();
-  }, [clock.running, clock.remainingMs, endQuarter]);
+    if (clock.running && timeUp) {
+      append('clock_stop', { period: clock.period, clockMs: 0 });
+      void impactAsync(ImpactFeedbackStyle.Heavy);
+    }
+  }, [append, clock.period, clock.running, timeUp]);
 
   const say = (e: LiveEvent) => describe(e, config, lineups.get(e.id) ?? lineup);
   const openSheet = sheet ? (
@@ -162,6 +168,18 @@ function Entry({ game }: { game: Game }) {
             detail,
           })
         }
+        onClose={() => setSheet(null)}
+      />
+    ) : sheet.kind === 'clock' ? (
+      <ClockSheet
+        period={clock.period}
+        remainingMs={clock.remainingMs}
+        quarterMs={config.quarterMs}
+        running={clock.running}
+        onSet={(ms) => {
+          const e = setClockEvent(clock, ms, config.quarterMs);
+          append(e.type, e.payload);
+        }}
         onClose={() => setSheet(null)}
       />
     ) : sheet.kind === 'stats' ? (
@@ -202,7 +220,9 @@ function Entry({ game }: { game: Game }) {
           </Text>
         ) : null}
         <Text style={styles.q}>Q{clock.period}</Text>
-        <Text style={[styles.clock, compact && styles.clockCompact]}>{fmtClock(clock.remainingMs)}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Game clock, tap to set" onPress={() => setSheet({ kind: 'clock' })} style={styles.clockBtn}>
+          <Text style={[styles.clock, compact && styles.clockCompact, timeUp && styles.clockUp]}>{fmtClock(clock.remainingMs)}</Text>
+        </Pressable>
         <Btn label={clock.running ? 'Stop' : 'Start'} tone={clock.running ? 'target' : 'primary'} onPress={startStop} style={styles.topBtn} />
         <Text style={styles.score} numberOfLines={1}>
           {compact ? '' : `${config.us} `}<Text style={styles.scoreN}>{state.score.us}</Text> – <Text style={styles.scoreN}>{state.score.them}</Text>
@@ -216,7 +236,7 @@ function Entry({ game }: { game: Game }) {
         <View style={{ flex: 1 }} />
         {!compact ? <Text style={s.muted}>Saved on device</Text> : null}
         <Btn label="Stats" onPress={() => setSheet({ kind: 'stats' })} style={styles.topBtn} />
-        <Btn label={compact ? 'End Q' : 'End quarter'} onPress={endQuarter} style={styles.topBtn} />
+        <Btn label={compact ? 'End Q' : 'End quarter'} tone={timeUp ? 'primary' : 'target'} onPress={endQuarter} style={styles.topBtn} />
       </View>
       <View style={styles.main}>
         <View style={styles.left}>
@@ -314,6 +334,9 @@ function BreakReview({
   const actionsThisQuarter = live.filter((e) => e.type === 'action' && e.payload.period === state.period).length;
   const other = <T extends string>(v: T, a: T, b: T) => (v === a ? b : a);
 
+  const resumeId = resumableEnd(game.events);
+  const resume = () => resumeId && append('correction', { target: resumeId, op: 'delete' });
+
   const startNext = () =>
     append('period_start', { period: defaults.period, clockMs: config.quarterMs, attackEnd: end, centrePass: cp, mode });
 
@@ -372,6 +395,7 @@ function BreakReview({
             {!fullTime ? <Btn label="Start next quarter" tone="primary" big onPress={startNext} /> : null}
             <Btn label="Subs" onPress={() => onSheet({ kind: 'subs' })} />
             <Btn label="Stats" onPress={() => onSheet({ kind: 'stats' })} />
+            {resumeId ? <Btn label={`Back to Q${state.period}`} onPress={resume} /> : null}
             <Btn label="Export log" onPress={() => onSheet({ kind: 'export' })} />
             <Btn label="Home" onPress={() => router.replace('/')} />
           </View>
@@ -401,6 +425,8 @@ const styles = StyleSheet.create({
   q: { color: colors.text, fontSize: 18, fontWeight: '700' },
   clock: { color: colors.text, fontSize: 28, fontWeight: '700', fontVariant: ['tabular-nums'], minWidth: 84, textAlign: 'center' },
   clockCompact: { fontSize: 22, minWidth: 64 },
+  clockBtn: { borderRadius: 8, borderWidth: 1, borderColor: colors.surfaceLine, paddingHorizontal: 6, minHeight: 44, justifyContent: 'center' },
+  clockUp: { color: colors.attention },
   topBtn: { minHeight: 44 },
   score: { color: colors.textMuted, fontSize: 17, fontWeight: '700' },
   scoreN: { color: colors.text },

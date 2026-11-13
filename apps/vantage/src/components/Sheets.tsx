@@ -127,6 +127,59 @@ export function EditSheet({
   );
 }
 
+const STEPS: [string, number][] = [
+  ['−1 min', -60_000],
+  ['−10 s', -10_000],
+  ['−1 s', -1_000],
+  ['+1 s', 1_000],
+  ['+10 s', 10_000],
+  ['+1 min', 60_000],
+];
+
+/**
+ * Nudge the quarter clock to match the official scoring clock. The change is
+ * kept as an offset, so a running clock keeps ticking while it is adjusted.
+ */
+export function ClockSheet({
+  period,
+  remainingMs,
+  quarterMs,
+  running,
+  onSet,
+  onClose,
+}: {
+  period: number;
+  remainingMs: number;
+  quarterMs: number;
+  running: boolean;
+  onSet: (clockMs: number) => void;
+  onClose: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const target = Math.max(0, Math.min(quarterMs, remainingMs + offset));
+  const save = () => {
+    if (offset !== 0) onSet(target);
+    onClose();
+  };
+  return (
+    <Sheet title={`Set the Q${period} clock`} onClose={onClose}>
+      <Text style={s.muted}>
+        Match the official scoring clock. {running ? 'The clock keeps running while you set it.' : 'The clock stays stopped.'} Events already entered keep their times.
+      </Text>
+      <Text style={sh.bigClock}>{fmtClock(target)}</Text>
+      <View style={sh.choices}>
+        {STEPS.map(([label, ms]) => (
+          <Btn key={label} label={label} onPress={() => setOffset(offset + ms)} style={sh.step} />
+        ))}
+      </View>
+      <View style={sh.choices}>
+        <Btn label="Set clock" tone="primary" onPress={save} style={sh.choice} />
+        <Btn label="Cancel" tone="quiet" onPress={onClose} style={sh.choice} />
+      </View>
+    </Sheet>
+  );
+}
+
 /** Tap a position then a bench player to bring them on, or two positions to swap. */
 export function SubsSheet({
   lineup,
@@ -309,5 +362,7 @@ const sh = StyleSheet.create({
   th: { flex: 1, color: colors.textMuted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
   td: { flex: 1, color: colors.text, fontSize: 14, fontVariant: ['tabular-nums'] },
   n: { textAlign: 'right' },
+  bigClock: { color: colors.text, fontSize: 48, fontWeight: '700', fontVariant: ['tabular-nums'], textAlign: 'center', marginVertical: 8 },
+  step: { minWidth: '30%', flexGrow: 1, minHeight: 56 },
   mono: { color: colors.text, fontFamily: 'monospace', fontSize: 11 },
 });
