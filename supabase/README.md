@@ -17,3 +17,7 @@ What the apps call, in order:
 
 Clubs are listed in each app's `app.json` under `expo.extra.clubs` (`code`, `name`, `supabaseUrl`,
 `anonKey`), the same list as HQ's `src/constants/clubs.ts`.
+
+`migrations/` and `functions/` here stay empty: the schema belongs to HQ. If a migration is ever added here,
+it grants its own tables' access; see "Database migrations" in `AGENTS.md`. CI checks it with
+`scripts/check-migration-security.py`.

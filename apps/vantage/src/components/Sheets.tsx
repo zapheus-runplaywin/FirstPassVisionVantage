@@ -1,4 +1,4 @@
-import { netPoints, type GameState, type LiveEvent } from '@firstpass/engine';
+import { netPoints, timingRows, timingTable, type GameState, type LiveEvent } from '@firstpass/engine';
 import {
   ACTIONS,
   CAUSES_LOST,
@@ -251,15 +251,21 @@ function Table({ head, rows }: { head: string[]; rows: string[][] }) {
 }
 
 export function ExportSheet({ config, events, onClose }: { config: GameConfig; events: readonly GameEvent[]; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'log' | 'timing' | null>(null);
   const json = JSON.stringify({ config, events }, null, 1);
   const corrections = events.filter((e) => e.type === 'correction').length;
+  const copy = (what: 'log' | 'timing', text: () => string) => void setStringAsync(text()).then(() => setCopied(what));
   return (
     <Sheet title="Event log" onClose={onClose}>
       <Text style={s.muted}>
         {events.length} events including {corrections} corrections. Everything is kept; nothing is overwritten.
       </Text>
-      <Btn label={copied ? 'Copied' : 'Copy to clipboard'} tone="primary" onPress={() => void setStringAsync(json).then(() => setCopied(true))} />
+      <Btn label={copied === 'log' ? 'Copied' : 'Copy to clipboard'} tone="primary" onPress={() => copy('log', () => json)} />
+      <Btn label={copied === 'timing' ? 'Copied' : 'Copy timing table'} onPress={() => copy('timing', () => timingTable(timingRows(config, events), '\t'))} />
+      <Text style={s.muted}>
+        The timing table pastes into a spreadsheet with one row per event, corrections applied. since_start_s counts from when the clock was first started here, which
+        should follow the live scoring clock: add it to the clock start&apos;s time in the video to find each event.
+      </Text>
       <Text style={sh.mono} numberOfLines={30}>
         {json}
       </Text>
