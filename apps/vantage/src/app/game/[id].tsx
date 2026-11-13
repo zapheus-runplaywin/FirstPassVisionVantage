@@ -1,4 +1,4 @@
-import { liveEvents, nextPeriodDefaults, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
+import { lineupsAt, liveEvents, nextPeriodDefaults, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
 import type { Action, Cause, CorrectionPayload, CourtEnd, CourtPoint, EntryMode, PlayerRef, Position, Rebound, Team } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics';
@@ -49,6 +49,8 @@ function Entry({ game }: { game: Game }) {
   const [pending, setPending] = useState<Pending | null>(null);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const live = useMemo(() => liveEvents(game.events), [game.events]);
+  // Who was in each position when each action happened, so names stay right after subs.
+  const lineups = useMemo(() => lineupsAt(game.events), [game.events]);
   const lineup = state.lineup ?? {};
 
   const commit = useCallback(
@@ -131,14 +133,14 @@ function Entry({ game }: { game: Game }) {
     if (clock.running && clock.remainingMs <= 0) endQuarter();
   }, [clock.running, clock.remainingMs, endQuarter]);
 
-  const say = (e: LiveEvent) => describe(e, config, lineup);
+  const say = (e: LiveEvent) => describe(e, config, lineups.get(e.id) ?? lineup);
   const openSheet = sheet ? (
     sheet.kind === 'edit' ? (
       <EditSheet
         key={sheet.event.id}
         event={sheet.event}
         config={config}
-        lineup={lineup}
+        lineup={lineups.get(sheet.event.id) ?? lineup}
         title={`Edit · Q${sheet.event.payload.period} ${fmtClock(sheet.event.payload.clockMs)}`}
         onCorrect={correct}
         onClose={() => setSheet(null)}
@@ -147,11 +149,13 @@ function Entry({ game }: { game: Game }) {
       <SubsSheet
         lineup={lineup}
         bench={game.bench}
-        running={clock.running}
+        when={clock.inBreak ? `the start of Q${clock.period + 1}` : `Q${clock.period} ${fmtClock(clock.remainingMs)}`}
         onChange={(next, bench, detail) =>
           append('lineup_change', {
-            period: clock.period,
-            clockMs: clock.running ? clock.remainingMs : config.quarterMs,
+            // In a break the change is for the start of the next quarter; otherwise it is timed
+            // to the clock now, running or stopped (an injury sub with the clock stopped).
+            period: clock.inBreak ? clock.period + 1 : clock.period,
+            clockMs: clock.inBreak ? config.quarterMs : clock.remainingMs,
             team: 'us',
             lineup: next,
             bench,
@@ -161,7 +165,13 @@ function Entry({ game }: { game: Game }) {
         onClose={() => setSheet(null)}
       />
     ) : sheet.kind === 'stats' ? (
-      <StatsSheet state={state} events={game.events} config={config} onClose={() => setSheet(null)} />
+      <StatsSheet
+        state={state}
+        events={game.events}
+        config={config}
+        remainingMs={clock.inBreak ? undefined : clock.remainingMs}
+        onClose={() => setSheet(null)}
+      />
     ) : (
       <ExportSheet config={config} events={game.events} onClose={() => setSheet(null)} />
     )
