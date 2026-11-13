@@ -66,6 +66,8 @@ export interface Change {
   position: Position;
   on: string;
   off: string;
+  /** How many possessions came before it: the index of the first possession after it. */
+  index: number;
 }
 
 export interface GameModel {
@@ -74,6 +76,8 @@ export interface GameModel {
   changes: Change[];
   /** Our current lineup, from the latest lineup change. */
   lineup: Lineup;
+  /** Their current lineup, when the tablet records their names. */
+  theirLineup: Lineup;
   /** The quarter the log is up to. */
   period: number;
 }
@@ -119,7 +123,7 @@ export function buildModel(events: readonly GameEvent[]): GameModel {
         for (const position of Object.keys(after) as Position[]) {
           const on = after[position];
           const off = before[position];
-          if (on && off && on !== off) changes.push({ team: e.payload.team, period: e.payload.period, clockMs: e.payload.clockMs, position, on, off });
+          if (on && off && on !== off) changes.push({ team: e.payload.team, period: e.payload.period, clockMs: e.payload.clockMs, position, on, off, index: possessions.length });
         }
         if (e.payload.team === 'us') lineup = after;
         else theirLineup = after;
@@ -176,7 +180,7 @@ export function buildModel(events: readonly GameEvent[]): GameModel {
         break;
     }
   }
-  return { possessions, changes, lineup, period };
+  return { possessions, changes, lineup, theirLineup, period };
 }
 
 export function shotsOf(list: readonly Possession[]): Shot[] {

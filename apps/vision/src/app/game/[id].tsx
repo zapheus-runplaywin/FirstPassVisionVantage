@@ -4,13 +4,19 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertCard, NoCard } from '../../components/AlertCard';
+import { BreakView } from '../../components/BreakView';
+import { ChangesTab } from '../../components/ChangesTab';
+import { CourtTab } from '../../components/CourtTab';
+import { OnCourtTab } from '../../components/OnCourtTab';
 import { MiniCourt } from '../../components/MiniCourt';
 import { OnCourtStrip } from '../../components/OnCourtStrip';
 import { Tiles } from '../../components/Tiles';
 import { Btn, ui } from '../../components/ui';
 import { useCardPrefs } from '../../live/useCardPrefs';
 import { runAlerts, visibleLive } from '../../stats/alerts';
-import { lossesThisQuarter, onCourt } from '../../stats/markers';
+import { quarterLine, sayPoints } from '../../stats/breakview';
+import { verdicts } from '../../stats/changes';
+import { lossesThisQuarter, matchUps, onCourt } from '../../stats/markers';
 import { buildModel } from '../../stats/possessions';
 import { tiles } from '../../stats/tiles';
 import { freshness, scoreSummary, type Freshness, type ScoreSummary } from '../../live/summary';
@@ -30,11 +36,21 @@ export default function LiveGame() {
   // The figures change only when events do, not every clock tick.
   const glance = useMemo(() => {
     const model = buildModel(events);
-    return { tiles: tiles(model), players: onCourt(model), losses: lossesThisQuarter(model), period: model.period };
+    return {
+      model,
+      tiles: tiles(model),
+      players: onCourt(model),
+      matchUps: matchUps(model),
+      verdicts: verdicts(model),
+      losses: lossesThisQuarter(model),
+      period: model.period,
+    };
   }, [events]);
   const alerts = useMemo(() => runAlerts(events), [events]);
   const { prefs, toggleStar, dismiss } = useCardPrefs(id);
   const [tab, setTab] = useState<Tab>('live');
+  // The break view opens by itself at each break; closing it keeps it closed for that break.
+  const [closedBreak, setClosedBreak] = useState<string | null>(null);
 
   if (game === undefined && !gameError) {
     return (
@@ -56,12 +72,18 @@ export default function LiveGame() {
   const wide = width >= TWO_COLUMNS;
   const live = visibleLive(alerts.live, prefs.muted, glance.period);
   const top = live[0];
+  const inBreak = summary.phase === 'break' || summary.phase === 'full time';
+  const breakKey = `${summary.phase}:${summary.period}`;
+  const showBreak = inBreak && events.length > 0 && closedBreak !== breakKey;
 
   return (
     <SafeAreaView style={ui.screen}>
       <View style={styles.top}>
         <Btn label="‹ Games" tone="quiet" onPress={() => router.back()} style={styles.back} />
         <View style={styles.grow} />
+        {inBreak && !showBreak && events.length > 0 ? (
+          <Btn label="Break view" tone="dim" onPress={() => setClosedBreak(null)} style={styles.breakBtn} />
+        ) : null}
         <ConnectionChip connection={feed.connection} fresh={fresh} />
       </View>
       {fresh.kind !== 'fresh' ? <StaleBanner fresh={fresh} error={feed.error} /> : null}
@@ -69,6 +91,12 @@ export default function LiveGame() {
         <Score summary={summary} />
         {events.length === 0 ? (
           <Text style={[ui.muted, styles.centerText]}>Waiting for the first stats from the statistician's tablet.</Text>
+        ) : tab === 'court' ? (
+          <CourtTab model={glance.model} names={summary.names} />
+        ) : tab === 'oncourt' ? (
+          <OnCourtTab rows={glance.matchUps} />
+        ) : tab === 'changes' ? (
+          <ChangesTab verdicts={glance.verdicts} names={summary.names} />
         ) : tab === 'alerts' ? (
           <View style={styles.alerts}>
             <Heading left="Alerts · this game" right={`${live.length} live · ${alerts.log.length} total`} />
@@ -114,14 +142,29 @@ export default function LiveGame() {
         )}
       </ScrollView>
       <TabBar tab={tab} onTab={setTab} badge={live.length} />
+      {showBreak ? (
+        <BreakView
+          period={summary.period}
+          fullTime={summary.phase === 'full time'}
+          names={summary.names}
+          score={summary.score}
+          quarter={quarterLine(glance.model, summary.period)}
+          points={sayPoints(alerts.log, glance.model, summary.period)}
+          lineup={glance.model.lineup}
+          onClose={() => setClosedBreak(breakKey)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
 
-type Tab = 'live' | 'alerts';
+type Tab = 'live' | 'court' | 'oncourt' | 'changes' | 'alerts';
 
 const TABS: readonly (readonly [Tab, string])[] = [
   ['live', 'Live'],
+  ['court', 'Court'],
+  ['oncourt', 'On court'],
+  ['changes', 'Changes'],
   ['alerts', 'Alerts'],
 ];
 
@@ -224,6 +267,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingTop: 4 },
   back: { minHeight: 44, paddingHorizontal: 8 },
+  breakBtn: { minHeight: 40, paddingHorizontal: 12, marginRight: 8 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -244,9 +288,9 @@ const styles = StyleSheet.create({
   more: { paddingVertical: 8 },
   moreText: { color: colors.selected, fontSize: 14, fontWeight: '700' },
   tabs: { flexDirection: 'row', backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.surfaceLine },
-  tab: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, borderTopWidth: 3, borderTopColor: 'transparent' },
+  tab: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4, borderTopWidth: 3, borderTopColor: 'transparent', paddingHorizontal: 2 },
   tabOn: { borderTopColor: colors.selected },
-  tabText: { color: colors.textMuted, fontSize: 15, fontWeight: '700' },
+  tabText: { color: colors.textMuted, fontSize: 14, fontWeight: '700' },
   tabTextOn: { color: colors.selected },
   badge: { backgroundColor: colors.attention, borderRadius: 999, minWidth: 20, paddingHorizontal: 6, paddingVertical: 1, alignItems: 'center' },
   badgeText: { color: colors.text, fontSize: 12, fontWeight: '800' },

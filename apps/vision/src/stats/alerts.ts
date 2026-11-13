@@ -1,5 +1,6 @@
 import type { GameEvent } from '@firstpass/schema';
 import { formatClock } from '../live/summary';
+import { beforeAfter, verdict, when as changeWhen } from './changes';
 import { buildModel, gameTime, shotsOf, type GameModel, type Possession } from './possessions';
 import { MIN_POSSESSIONS, MIN_SHOTS, WINDOW } from './tiles';
 
@@ -25,6 +26,8 @@ export const GAP = 0.2;
 export const WEAK = 0.15;
 export const QUIET_MS = 90_000;
 export const MAX_LIVE = 3;
+/** How long a change verdict card stays up: five minutes of game time. */
+export const CHANGE_TTL_MS = 300_000;
 
 export interface Candidate {
   subject: string;
@@ -34,6 +37,8 @@ export interface Candidate {
   headline: string;
   count: string;
   anchor: string;
+  /** A one-shot card (a change verdict) retires after this much game time and is not raised again. */
+  ttlMs?: number;
 }
 
 export interface Card extends Candidate {
@@ -155,6 +160,20 @@ export function candidates(model: GameModel): Candidate[] {
       });
     }
   }
+
+  for (const change of model.changes) {
+    const v = verdict(model, change);
+    if (v.state !== 'helped' && v.state !== 'hurt') continue;
+    out.push({
+      subject: `change:${change.team}:${change.position}:${change.index}`,
+      kind: 'act',
+      gap: Math.abs(v.after.goals / v.after.of - v.before.goals / v.before.of),
+      headline: `${change.team === 'us' ? 'Our' : 'Their'} ${change.position} change is ${v.state === 'helped' ? 'helping' : 'hurting'} us`,
+      count: beforeAfter(v),
+      anchor: `${change.on} on for ${change.off}, ${changeWhen(change)}`,
+      ttlMs: CHANGE_TTL_MS,
+    });
+  }
   return out;
 }
 
@@ -186,7 +205,8 @@ export function runAlerts(events: readonly GameEvent[]): AlertState {
     for (let j = live.length - 1; j >= 0; j--) {
       const card = live[j]!;
       const still = found.find((c) => c.subject === card.subject);
-      if (!still) {
+      const expired = card.ttlMs !== undefined && now - card.createdAt >= card.ttlMs;
+      if (!still || expired) {
         card.retiredWhen = nowWhen;
         live.splice(j, 1);
       } else {
@@ -194,7 +214,11 @@ export function runAlerts(events: readonly GameEvent[]): AlertState {
       }
     }
 
-    const fresh = rank(found.filter((c) => c.gap >= GAP && !live.some((l) => l.subject === c.subject)));
+    const fresh = rank(
+      found.filter(
+        (c) => c.gap >= GAP && !live.some((l) => l.subject === c.subject) && !(c.ttlMs !== undefined && log.some((l) => l.subject === c.subject)),
+      ),
+    );
     if (fresh.length && now - lastNew >= QUIET_MS && live.length < MAX_LIVE) {
       const c = fresh[0]!;
       const card: Card = { ...c, id: `${c.subject}@${now}`, period, createdAt: now, createdWhen: nowWhen, retiredWhen: null };
