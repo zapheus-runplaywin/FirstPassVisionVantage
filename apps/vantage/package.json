@@ -7,13 +7,17 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@firstpass/engine": "workspace:*",
     "@firstpass/schema": "workspace:*",
     "@firstpass/ui": "workspace:*",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.119.0",
     "expo": "~57.0.32",
+    "expo-auth-session": "~57.0.17",
     "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.23",
     "expo-crypto": "~57.0.4",
@@ -26,6 +30,7 @@
     "expo-splash-screen": "~57.0.11",
     "expo-sqlite": "~57.0.4",
     "expo-status-bar": "~57.0.1",
+    "expo-web-browser": "~57.0.3",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-reanimated": "4.5.5",
@@ -36,6 +41,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
   }
 }

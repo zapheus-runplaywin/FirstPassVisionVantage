@@ -29,37 +29,102 @@ function open(): SQLiteDatabase {
       recorded_at TEXT NOT NULL,
       PRIMARY KEY (game_id, stream, seq)
     );
+    CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);
   `);
+  // Sync columns, added after the first release.
+  for (const col of ['club_code TEXT', 'team_id TEXT', 'fixture_id TEXT', 'pair_code TEXT', 'acked_seq INTEGER NOT NULL DEFAULT 0']) {
+    try {
+      db.execSync(`ALTER TABLE games ADD COLUMN ${col}`);
+    } catch {
+      // Already there.
+    }
+  }
   return db;
+}
+
+export function getKv(key: string): string | null {
+  return open().getFirstSync<{ value: string }>('SELECT value FROM kv WHERE key = ?', key)?.value ?? null;
+}
+
+export function setKv(key: string, value: string): void {
+  open().runSync('INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value', key, value);
 }
 
 export interface SavedGame {
   id: string;
   config: GameConfig;
   createdAt: string;
+  /** The club whose database the game goes to; null while the game is local only. */
+  clubCode: string | null;
+  /** The squad or team and PlayHQ fixture it was started from, when known. */
+  teamId: string | null;
+  fixtureId: string | null;
+  /** Set once the server has the game; shown to the coach and shadow. */
+  pairCode: string | null;
+  /** Highest seq the server has confirmed. */
+  ackedSeq: number;
+}
+
+interface GameRow {
+  id: string;
+  config: string;
+  created_at: string;
+  club_code: string | null;
+  team_id: string | null;
+  fixture_id: string | null;
+  pair_code: string | null;
+  acked_seq: number;
+}
+
+const GAME_COLS = 'id, config, created_at, club_code, team_id, fixture_id, pair_code, acked_seq';
+
+function toGame(r: GameRow): SavedGame {
+  return {
+    id: r.id,
+    config: JSON.parse(r.config) as GameConfig,
+    createdAt: r.created_at,
+    clubCode: r.club_code,
+    teamId: r.team_id,
+    fixtureId: r.fixture_id,
+    pairCode: r.pair_code,
+    ackedSeq: r.acked_seq,
+  };
 }
 
 export function listGames(): SavedGame[] {
-  const rows = open().getAllSync<{ id: string; config: string; created_at: string }>(
-    'SELECT id, config, created_at FROM games ORDER BY created_at DESC',
-  );
-  return rows.map((r) => ({ id: r.id, config: JSON.parse(r.config) as GameConfig, createdAt: r.created_at }));
+  return open()
+    .getAllSync<GameRow>(`SELECT ${GAME_COLS} FROM games ORDER BY created_at DESC`)
+    .map(toGame);
 }
 
 export function getGame(id: string): SavedGame | null {
-  const r = open().getFirstSync<{ id: string; config: string; created_at: string }>(
-    'SELECT id, config, created_at FROM games WHERE id = ?',
-    id,
-  );
-  return r ? { id: r.id, config: JSON.parse(r.config) as GameConfig, createdAt: r.created_at } : null;
+  const r = open().getFirstSync<GameRow>(`SELECT ${GAME_COLS} FROM games WHERE id = ?`, id);
+  return r ? toGame(r) : null;
 }
 
 export function createGame(game: SavedGame, events: readonly GameEvent[]): void {
   const d = open();
   d.withTransactionSync(() => {
-    d.runSync('INSERT INTO games (id, config, created_at) VALUES (?, ?, ?)', game.id, JSON.stringify(game.config), game.createdAt);
+    d.runSync(
+      'INSERT INTO games (id, config, created_at, club_code, team_id, fixture_id) VALUES (?, ?, ?, ?, ?, ?)',
+      game.id,
+      JSON.stringify(game.config),
+      game.createdAt,
+      game.clubCode,
+      game.teamId,
+      game.fixtureId,
+    );
     for (const e of events) insert(d, e);
   });
+}
+
+export function markSynced(gameId: string, ackedSeq: number, pairCode: string | null): void {
+  open().runSync('UPDATE games SET acked_seq = ?, pair_code = COALESCE(?, pair_code) WHERE id = ?', ackedSeq, pairCode, gameId);
+}
+
+/** Events the server has not confirmed yet, in seq order. */
+export function loadUnsent(gameId: string, afterSeq: number, limit: number): GameEvent[] {
+  return loadEvents(gameId).filter((e) => e.seq > afterSeq).slice(0, limit);
 }
 
 export function loadEvents(gameId: string): GameEvent[] {

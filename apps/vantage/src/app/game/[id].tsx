@@ -15,6 +15,8 @@ import { describe } from '../../game/describe';
 import { emptyPending, type Pending } from '../../game/entry';
 import { STARTING_LINEUP } from '../../game/newGame';
 import { useClock, useGame, type Game } from '../../game/useGame';
+import { getGame } from '../../lib/db';
+import { syncLabel, useSync } from '../../lib/sync';
 
 type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' } | { kind: 'clock' };
 
@@ -47,6 +49,8 @@ function Entry({ game }: { game: Game }) {
   // Phones in landscape: keep the top strip to one line so the court gets the height.
   const compact = width < 1000;
   const [pending, setPending] = useState<Pending | null>(null);
+  const sync = useSync(game.id, game.events.length);
+  const pairCode = sync.kind === 'synced' || sync.kind === 'queued' ? getGame(game.id)?.pairCode : null;
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const live = useMemo(() => liveEvents(game.events), [game.events]);
   // Who was in each position when each action happened, so names stay right after subs.
@@ -234,7 +238,10 @@ function Entry({ game }: { game: Game }) {
           <Btn label={`${amberCount} to fill`} tone="selected" onPress={() => latestAmber && setSheet({ kind: 'edit', event: latestAmber })} style={styles.topBtn} />
         ) : null}
         <View style={{ flex: 1 }} />
-        {!compact ? <Text style={s.muted}>Saved on device</Text> : null}
+        {pairCode ? <Pill label="Pair code" value={`${pairCode.slice(0, 3)} ${pairCode.slice(3)}`} /> : null}
+        {!compact || sync.kind === 'lease lost' || sync.kind === 'offline' ? (
+          <Text style={[s.muted, sync.kind === 'lease lost' && styles.warnText]}>{syncLabel(sync)}</Text>
+        ) : null}
         <Btn label="Stats" onPress={() => setSheet({ kind: 'stats' })} style={styles.topBtn} />
         <Btn label={compact ? 'End Q' : 'End quarter'} tone={timeUp ? 'primary' : 'target'} onPress={endQuarter} style={styles.topBtn} />
       </View>
@@ -437,6 +444,7 @@ const styles = StyleSheet.create({
   q: { color: colors.text, fontSize: 18, fontWeight: '700' },
   clock: { color: colors.text, fontSize: 28, fontWeight: '700', fontVariant: ['tabular-nums'], minWidth: 84, textAlign: 'center' },
   clockCompact: { fontSize: 22, minWidth: 64 },
+  warnText: { color: colors.attention, fontWeight: '700' },
   clockBtn: { borderRadius: 8, borderWidth: 1, borderColor: colors.surfaceLine, paddingHorizontal: 6, minHeight: 44, justifyContent: 'center' },
   clockUp: { color: colors.attention },
   topBtn: { minHeight: 44 },

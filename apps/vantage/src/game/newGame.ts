@@ -6,7 +6,13 @@ import { uuidv7 } from '../lib/uuid';
 export const STARTING_LINEUP = 'Starting lineup';
 
 /** Saves a new game with its first quarter and starting lineup, and returns its id. */
-export function startNewGame(config: GameConfig, mode: EntryMode, lineup: Partial<Record<Position, string>>, bench: string[]): string {
+export function startNewGame(
+  config: GameConfig,
+  mode: EntryMode,
+  lineup: Partial<Record<Position, string>>,
+  bench: string[],
+  club: { clubCode: string | null; teamId: string | null; fixtureId: string | null } = { clubCode: null, teamId: null, fixtureId: null },
+): string {
   const id = uuidv7();
   const recordedAt = new Date().toISOString();
   const base = { gameId: id, stream: 'primary' as const, recordedAt };
@@ -26,6 +32,6 @@ export function startNewGame(config: GameConfig, mode: EntryMode, lineup: Partia
       payload: { period: 1, clockMs: config.quarterMs, team: 'us', lineup, bench, detail: STARTING_LINEUP },
     },
   ];
-  createGame({ id, config, createdAt: recordedAt }, events);
+  createGame({ id, config, createdAt: recordedAt, ...club, pairCode: null, ackedSeq: 0 }, events);
   return id;
 }
