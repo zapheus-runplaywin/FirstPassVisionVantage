@@ -80,9 +80,9 @@ describe('timingRows', () => {
 describe('timingTable', () => {
   it('writes a header and one line per row', () => {
     const lines = timingTable(timingRows(config, game())).trimEnd().split('\n');
-    expect(lines[0]).toBe('seq,recorded_at,since_start_s,quarter,game_clock,team,position,player,event,cause,rebound,third,centre_pass_goal,edited,note');
+    expect(lines[0]).toBe('seq,recorded_at,since_start_s,quarter,game_clock,team,position,player,event,cause,rebound,rebounder,third,centre_pass_goal,edited,note');
     expect(lines).toHaveLength(10);
-    expect(lines[4]).toBe('4,2026-10-25T09:00:06.250Z,1.25,1,14:59,Thunder,C,Zoe Hart,Centre pass received,,,,,,');
+    expect(lines[4]).toBe('4,2026-10-25T09:00:06.250Z,1.25,1,14:59,Thunder,C,Zoe Hart,Centre pass received,,,,,,,');
   });
 
   it('quotes commas and quotes in CSV, and flattens tabs and newlines in TSV', () => {
@@ -91,7 +91,7 @@ describe('timingTable', () => {
     expect(timingTable(rows)).toMatch(/,"Mia ""M"" on, Jade\toff\nlate"\n$/);
     const tsv = timingTable(rows, '\t').trimEnd().split('\n');
     expect(tsv).toHaveLength(2);
-    expect(tsv[1]!.split('\t')).toHaveLength(15);
+    expect(tsv[1]!.split('\t')).toHaveLength(16);
     expect(tsv[1]!.endsWith('Mia "M" on, Jade off late')).toBe(true);
   });
 });

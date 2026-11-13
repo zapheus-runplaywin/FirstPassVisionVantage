@@ -23,6 +23,8 @@ export interface TimingRow {
   event: string;
   cause: string;
   rebound: string;
+  /** Our player who took the rebound, when recorded. */
+  rebounder: string;
   third: string;
   /** For our goals and theirs: "yes" when the goal came from that team's centre pass. */
   centrePassGoal: string;
@@ -43,6 +45,7 @@ export const TIMING_COLUMNS: readonly { key: keyof TimingRow; label: string }[] 
   { key: 'event', label: 'event' },
   { key: 'cause', label: 'cause' },
   { key: 'rebound', label: 'rebound' },
+  { key: 'rebounder', label: 'rebounder' },
   { key: 'third', label: 'third' },
   { key: 'centrePassGoal', label: 'centre_pass_goal' },
   { key: 'edited', label: 'edited' },
@@ -85,6 +88,7 @@ export function timingRows(config: GameConfig, events: readonly GameEvent[]): Ti
       event: e.type === 'action' ? e.payload.action : EVENT_NAMES[e.type],
       cause: '',
       rebound: '',
+      rebounder: '',
       third: '',
       centrePassGoal: '',
       edited: edited.has(e.id) ? 'yes' : '',
@@ -100,6 +104,7 @@ export function timingRows(config: GameConfig, events: readonly GameEvent[]): Ti
       }
       row.cause = a.cause ?? '';
       row.rebound = a.rebound ?? '';
+      if (a.rebounder) row.rebounder = a.rebounder === '?' ? '?' : `${a.rebounder} ${lineup[a.rebounder] ?? ''}`.trim();
       if (a.at) row.third = zoneOf(a.at).third;
       if (a.action === 'Goal') {
         const chain = state.chain;

@@ -1,4 +1,4 @@
-import { lineupsAt, liveEvents, nextPeriodDefaults, QUARTERS, resumableEnd, setClockEvent, timingRows, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
+import { weRebounded, lineupsAt, liveEvents, nextPeriodDefaults, QUARTERS, resumableEnd, setClockEvent, timingRows, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
 import type { Action, Cause, CorrectionPayload, CourtEnd, CourtPoint, EntryMode, PlayerRef, Position, Rebound, Team } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics';
@@ -69,6 +69,7 @@ function Entry({ game }: { game: Game }) {
         action: p.action,
         ...(p.cause ? { cause: p.cause } : {}),
         ...(p.rebound ? { rebound: p.rebound } : {}),
+        ...(p.rebounder ? { rebounder: p.rebounder } : {}),
         ...(p.at ? { at: p.at } : {}),
       });
       void impactAsync(ImpactFeedbackStyle.Light);
@@ -78,7 +79,7 @@ function Entry({ game }: { game: Game }) {
 
   /** A tap elsewhere while the optional second tap is showing skips it; the event gets an amber dot. */
   const settle = () => {
-    if (pending && (pending.stage === 'cause' || pending.stage === 'rebound')) {
+    if (pending && (pending.stage === 'cause' || pending.stage === 'rebound' || pending.stage === 'rebounder')) {
       commit(pending);
       return null;
     }
@@ -105,7 +106,13 @@ function Entry({ game }: { game: Game }) {
     if (pending) commit({ ...pending, cause });
   };
   const onRebound = (rebound: Rebound) => {
-    if (pending) commit({ ...pending, rebound });
+    if (!pending) return;
+    // When we got the ball back, a second tap says who took it (optional).
+    if (weRebounded(rebound, pending.team ?? 'us')) setPending({ ...pending, rebound, stage: 'rebounder' });
+    else commit({ ...pending, rebound });
+  };
+  const onRebounder = (rebounder: PlayerRef) => {
+    if (pending) commit({ ...pending, rebounder });
   };
 
   const correct = (c: CorrectionPayload) => {
@@ -274,6 +281,8 @@ function Entry({ game }: { game: Game }) {
               onAction={onAction}
               onCause={onCause}
               onRebound={onRebound}
+              onRebounder={onRebounder}
+              lineup={lineup}
               onSkip={() => {
                 if (pending) commit(pending);
               }}

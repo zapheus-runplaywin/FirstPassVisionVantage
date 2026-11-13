@@ -28,6 +28,7 @@ export function describe(e: LiveEvent, config: GameConfig, lineup: Partial<Recor
       let text = `${a.action} · ${who}`;
       if (a.cause) text += ' · ' + a.cause.toLowerCase();
       if (a.rebound) text += ' · ' + reboundLabel(a.rebound, a.team, config);
+      if (a.rebounder) text += ' ' + (a.rebounder === '?' ? '?' : `${shortName(lineup[a.rebounder])} ${a.rebounder}`.trim());
       if (a.at) text += ' · ' + zoneOf(a.at).label;
       return text;
     }

@@ -96,6 +96,12 @@ export interface ActionPayload extends GameTime {
   action: Action;
   cause?: Cause | null;
   rebound?: Rebound | null;
+  /**
+   * After a miss that we rebounded (our OREB, or our DREB on their miss): which
+   * of our players took it. Absent or null when it was not recorded, or when
+   * the opposition got the ball (team-level only).
+   */
+  rebounder?: PlayerRef | null;
   at?: CourtPoint | null;
 }
 
@@ -117,7 +123,7 @@ export interface CorrectionPayload {
   target: string;
   op: 'delete' | 'edit';
   /** For edits: the fields that change. */
-  patch?: Partial<Pick<ActionPayload, 'team' | 'player' | 'action' | 'cause' | 'rebound'>>;
+  patch?: Partial<Pick<ActionPayload, 'team' | 'player' | 'action' | 'cause' | 'rebound' | 'rebounder'>>;
 }
 
 export type GameEvent =

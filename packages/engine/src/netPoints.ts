@@ -2,8 +2,9 @@ import type { ActionPayload, GameEvent, PlayerRef, Position, Team } from '@first
 import { liveEvents } from './corrections';
 
 /**
- * Nissan Net Points values, from the design doc's stat catalogue. Clubs can
- * re-weight any of them by passing overrides to `netPoints`.
+ * Nissan Net Points values, from the published Suncorp Super Netball scoring
+ * system (Champion Data tables Matt shared, 2026-11-13). Clubs can re-weight
+ * any of them by passing overrides to `netPoints`.
  */
 export const NET_POINTS = {
   intercept: 10,
@@ -11,14 +12,19 @@ export const NET_POINTS = {
   deflectionWithGain: 8,
   pickup: 8,
   defensiveRebound: 6,
+  /** Rebound offensive (teammate attempt): a teammate's miss won back. */
+  offensiveReboundTeammate: 3,
+  /** Rebound offensive (own attempt), and an offensive rebound whose rebounder is not named. */
+  offensiveReboundOwn: 1,
   deflectionNoGain: 4,
   goal: 2,
   feedWithGoalAssist: 2,
   feedWithAttempt: 1.5,
   centrePassReceive: 1,
-  feedNoAttempt: 1,
+  feedNoAttempt: 0.5,
   centrePass: 0.5,
   penalty: -0.5,
+  /** Missed goal (regained): the shooting team got the rebound, or it is not recorded yet. */
   missedGoal: -1,
   turnover: -8,
   missedGoalTurnover: -8,
@@ -118,7 +124,10 @@ export function netPoints(events: readonly GameEvent[], overrides: Partial<NetPo
       case 'Goal':
       case 'Miss': {
         const goal = a.action === 'Goal';
-        credit(team, player, goal ? v.goal : v.missedGoal);
+        // A miss the other team gets (their rebound, or out of court) is a missed goal
+        // turnover (-8) instead of a missed goal regained (-1).
+        const lost = !goal && (a.rebound === 'theirs' || a.rebound === 'out');
+        credit(team, player, goal ? v.goal : lost ? v.missedGoalTurnover : v.missedGoal);
         if (feed?.team === team) {
           // Feed values replace each other: the best outcome of the feed counts.
           const value = Math.max(feed.credited, goal ? v.feedWithGoalAssist : v.feedWithAttempt);
@@ -127,10 +136,12 @@ export function netPoints(events: readonly GameEvent[], overrides: Partial<NetPo
         }
         // A missed shot keeps the possession only on our rebound.
         if (goal || a.rebound !== 'ours') feed = null;
-        // A missed goal turnover is scored on top of the miss itself.
-        if (!goal && a.rebound === 'theirs') {
-          credit(team, player, v.missedGoalTurnover);
-          credit(opponent, null, v.defensiveRebound);
+        // A defensive rebound goes to the player who took it, when the second tap named them.
+        if (!goal && a.rebound === 'theirs') credit(opponent, opponent === 'us' ? (a.rebounder ?? null) : null, v.defensiveRebound);
+        if (!goal && a.rebound === 'ours') {
+          const by = team === 'us' ? (a.rebounder ?? null) : null;
+          const teammate = by !== null && by !== '?' && player !== null && player !== '?' && by !== player;
+          credit(team, by, teammate ? v.offensiveReboundTeammate : v.offensiveReboundOwn);
         }
         break;
       }

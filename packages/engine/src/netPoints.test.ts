@@ -29,7 +29,7 @@ describe('netPoints', () => {
       act({ team: 'us', action: 'Feed', player: 'GA' }),
       act({ team: 'us', action: 'Miss', player: 'GS', rebound: 'theirs' }),
     ]);
-    expect(np.byPosition).toEqual({ GA: 1.5, GS: -9 });
+    expect(np.byPosition).toEqual({ GA: 1.5, GS: -8 });
     expect(np.team.them).toBe(6);
   });
 
