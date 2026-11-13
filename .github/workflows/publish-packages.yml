@@ -48,12 +48,13 @@ jobs:
       - name: Publish each package whose version npm doesn't have
         # schema first: the engine depends on its exact version.
         run: |
+          # ./ keeps npm from reading the path as a GitHub repository.
           for name in schema engine; do
             version=$(node -p "require('./packages/$name/package.json').version")
             if npm view "@firstpass/$name@$version" version >/dev/null 2>&1; then
               echo "@firstpass/$name $version is already on npm."
             else
               echo "Publishing @firstpass/$name $version."
-              npm publish "packs/firstpass-$name-$version.tgz" --access public --provenance
+              npm publish "./packs/firstpass-$name-$version.tgz" --access public --provenance
             fi
           done
