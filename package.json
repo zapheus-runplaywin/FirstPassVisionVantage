@@ -8,7 +8,8 @@
   "scripts": {
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "check": "turbo run typecheck test",
+    "build": "turbo run build",
+    "check": "turbo run typecheck test test:dist",
     "vantage": "pnpm --filter @firstpass/vantage start",
     "vision": "pnpm --filter @firstpass/vision start"
   },
