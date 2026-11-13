@@ -1,4 +1,4 @@
-import { clockState, deriveGame, reviewGame, type GameState, type ReviewIssue } from '@firstpass/engine';
+import { clockState, deriveGame, QUARTERS, reviewGame, type GameState, type ReviewIssue } from '@firstpass/engine';
 import type { EventOf, GameConfig, GameEvent, GameEventType, Position } from '@firstpass/schema';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { appendEvent, getGame, loadEvents } from '../lib/db';
@@ -11,7 +11,7 @@ export interface Game {
   state: GameState;
   /** Our bench after the latest lineup change. */
   bench: string[];
-  /** Flags, amber actions, chain checks and long gaps in the current quarter. */
+  /** Flags, amber actions, chain checks, and long gaps in the current quarter (every quarter at full time). */
   issues: ReviewIssue[];
   /** Ids of actions that carry an amber dot. */
   amberIds: ReadonlySet<string>;
@@ -49,7 +49,9 @@ export function useGame(id: string): Game | null {
   return useMemo(() => {
     if (!saved) return null;
     const state = deriveGame(saved.config, events);
-    const issues = reviewGame(saved.config, events, state.period);
+    // At full time the audit covers every quarter; at other breaks, the one just played.
+    const fullTime = state.period >= QUARTERS && clockState(events, saved.config.quarterMs, Date.now()).inBreak;
+    const issues = reviewGame(saved.config, events, fullTime ? 'all' : state.period);
     const amberIds = new Set(issues.flatMap((i) => (i.kind === 'amber' || i.kind === 'flag' ? [i.event.id] : [])));
     return { id, config: saved.config, events, state, bench: benchOf(events), issues, amberIds, append };
   }, [saved, events, id, append]);
