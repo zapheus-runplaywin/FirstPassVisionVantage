@@ -6,13 +6,6 @@
     },
     "test": {
       "dependsOn": ["^typecheck"]
-    },
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
-    },
-    "test:dist": {
-      "dependsOn": ["build"]
     }
   }
 }
