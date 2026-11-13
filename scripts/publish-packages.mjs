@@ -67,11 +67,16 @@ function stage({ dir, pkg }) {
   return out;
 }
 
+/** npm's answer for a package or version that isn't on the registry yet (GitHub Packages says E404). */
+export const notPublished = (stderr) => /\bE404\b|404 Not Found|is not in this registry/.test(String(stderr ?? ''));
+
 function onRegistry(name, version) {
   try {
-    return run('npm', ['view', `${name}@${version}`, 'version', '--registry', REGISTRY]).trim() === version;
+    // stderr is captured (not shown) so a 404 can be told apart from a real failure.
+    return run('npm', ['view', `${name}@${version}`, 'version', '--registry', REGISTRY], { stdio: ['ignore', 'pipe', 'pipe'] }).trim() === version;
   } catch (err) {
-    if (/E404|404 Not Found/.test(String(err.stderr ?? '') + String(err.message))) return false;
+    if (notPublished(err.stderr)) return false;
+    if (err.stderr) process.stderr.write(err.stderr);
     throw err;
   }
 }
