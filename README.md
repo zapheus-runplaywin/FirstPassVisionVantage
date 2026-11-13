@@ -8,8 +8,8 @@ Live netball stats. **FirstPass Vantage** is the statistician's tablet app for e
 | --- | --- |
 | `apps/vantage` | Expo tablet app for the statistician (Android first, then iPad), landscape |
 | `apps/vision` | Expo app for coaches: phone, tablet and web, portrait and landscape |
-| `packages/engine` | Pure stats engine shared by both apps: fold events into game state |
-| `packages/schema` | Event model shared by the apps and the database |
+| `packages/engine` | Pure stats engine shared by both apps and published to npm: fold events into game state |
+| `packages/schema` | Event model shared by the apps and the database, published to npm |
 | `packages/ui` | Brand colours and shared UI |
 | `supabase` | Database migrations and Edge Functions (from Phase 3) |
 
@@ -27,6 +27,14 @@ pnpm vision           # start the Vision dev server (press w for web)
 ```
 
 Add an Expo package to an app with `pnpm --filter @firstpass/vantage exec expo install <package>` so its version matches the Expo SDK.
+
+## Shared packages on npm
+
+`@firstpass/schema` and `@firstpass/engine` are published to the public npm registry so FirstPass Studio can fold HQ's game events exactly as Vision does. They are "All rights reserved" (`UNLICENSED`): anyone can read them, but they are for FirstPass's own apps. The apps here keep using the source in `packages/` directly.
+
+- To change one, bump its `version` in `package.json` (for the engine, `ENGINE_VERSION` in `src/version.ts` too; a test checks they match) and add a line to its `CHANGELOG.md`. The engine depends on the exact schema version, so a schema bump also bumps the engine. When the pull request merges, the "Publish packages" workflow publishes every version npm doesn't have yet.
+- `scripts/test-packages.sh` builds and packs both packages the way the workflow does, installs the tarballs into an empty project and checks them with plain Node (`require()` and `import`) and strict TypeScript. CI runs it on every pull request.
+- A new package's first version is published by hand once, because npm only lets an existing package name a trusted publisher. Signed in to npm as a member of the `firstpass` org: `pnpm install && scripts/test-packages.sh "$PWD/packs"`, then `npm publish packs/firstpass-<name>-<version>.tgz --access public --provenance=false`. Then on npmjs.com, in the package's settings, add a trusted publisher: GitHub Actions, repository `zapheus-runplaywin/FirstPassVisionVantage`, workflow `publish-packages.yml`.
 
 ## PlayHQ client
 

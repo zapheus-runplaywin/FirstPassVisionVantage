@@ -48,3 +48,6 @@ coverage/
 supabase/.branches/
 supabase/.temp/
 .env
+
+# npm package tarballs (scripts/test-packages.sh)
+packs/
