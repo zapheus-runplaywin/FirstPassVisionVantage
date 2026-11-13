@@ -263,6 +263,7 @@ function Entry({ game }: { game: Game }) {
               state={state}
               mode={state.mode}
               teamName={teamName}
+              names={{ us: config.us, them: config.them }}
               onAction={onAction}
               onCause={onCause}
               onRebound={onRebound}

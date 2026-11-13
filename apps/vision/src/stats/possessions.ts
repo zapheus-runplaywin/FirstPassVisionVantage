@@ -15,7 +15,7 @@ import type { CourtPoint, GameEvent, Position, Team } from '@firstpass/schema';
  * when given away), a miss that went to the other team, or the quarter end.
  * An offensive rebound keeps the possession going. Like the engine's
  * deriveGame, a miss's rebound is read from the shooting team's side:
- * 'ours' means the shooters kept it, 'theirs' that the defenders took it. Feed, Touch and Penalty
+ * 'ours' is an OREB (the shooters kept it), 'theirs' a DREB. Feed, Touch and Penalty
  * don't change who has the ball. Corrections are applied first.
  */
 

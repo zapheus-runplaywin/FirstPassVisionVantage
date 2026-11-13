@@ -53,7 +53,7 @@ describe('buildModel', () => {
     expect(m.possessions[0]!.loss).toMatchObject({ forced: false, player: 'Kim', position: 'WA' });
   });
 
-  it('reads the rebound from the shooting team\'s side, as the engine does', () => {
+  it('reads OREB and DREB from the shooting team\'s side, as the engine does', () => {
     const { s } = setup();
     const m = buildModel([
       s.start(1),

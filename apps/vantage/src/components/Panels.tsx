@@ -1,4 +1,4 @@
-import { legalPositions, type GameState, type LiveEvent } from '@firstpass/engine';
+import { legalPositions, reboundLabel, type GameState, type LiveEvent } from '@firstpass/engine';
 import { CAUSES_LOST, CAUSES_WON, POSITIONS, type Action, type Cause, type EntryMode, type PlayerRef, type Rebound, type Team } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -55,6 +55,7 @@ export function WhatPanel({
   state,
   mode,
   teamName,
+  names,
   onAction,
   onCause,
   onRebound,
@@ -64,6 +65,8 @@ export function WhatPanel({
   state: GameState;
   mode: EntryMode;
   teamName: string;
+  /** Both teams' names, for the rebound buttons. */
+  names: Record<Team, string>;
   onAction: (a: Action) => void;
   onCause: (c: Cause) => void;
   onRebound: (r: Rebound) => void;
@@ -88,12 +91,12 @@ export function WhatPanel({
         <View style={st.grid}>
           {(
             [
-              ['ours', 'Our rebound'],
-              ['theirs', 'Their rebound'],
-              ['out', 'Out of court'],
+              'ours',
+              'theirs',
+              'out',
             ] as const
-          ).map(([v, l]) => (
-            <Btn key={v} label={l} big onPress={() => onRebound(v)} style={st.cell} />
+          ).map((v) => (
+            <Btn key={v} label={reboundLabel(v, pending.team ?? 'us', names)} big onPress={() => onRebound(v)} style={st.cell} />
           ))}
         </View>
         <Btn label="Skip, fill at the break" tone="quiet" onPress={onSkip} />

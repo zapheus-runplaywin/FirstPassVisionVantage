@@ -1,4 +1,4 @@
-import { courtTime, gameFile, gameFileName, netPoints, timingRows, timingTable, type GameState, type LiveEvent } from '@firstpass/engine';
+import { courtTime, gameFile, gameFileName, netPoints, reboundLabel, timingRows, timingTable, type GameState, type LiveEvent } from '@firstpass/engine';
 import {
   ACTIONS,
   CAUSES_LOST,
@@ -116,7 +116,7 @@ export function EditSheet({
           <Choice
             items={['ours', 'theirs', 'out'] as Rebound[]}
             value={draft.rebound}
-            label={(r) => (r === 'ours' ? 'Our rebound' : r === 'theirs' ? 'Their rebound' : 'Out')}
+            label={(r) => reboundLabel(r, draft.team, { us: config.us, them: config.them })}
             onPick={(rebound) => set({ rebound })}
           />
         </>

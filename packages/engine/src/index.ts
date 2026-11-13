@@ -29,3 +29,4 @@ export { TIMING_COLUMNS, timingRows, timingTable, type TimingRow } from './timin
 export { courtTime, lineupsAt, type CourtTime, type Lineup } from './players';
 export { gameStatus, QUARTERS, type GameStatus } from './status';
 export { gameFile, gameFileName, type GameFile } from './gameFile';
+export { reboundLabel } from './rebound';

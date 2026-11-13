@@ -1,4 +1,4 @@
-import { zoneOf, type LiveEvent } from '@firstpass/engine';
+import { reboundLabel, zoneOf, type LiveEvent } from '@firstpass/engine';
 import type { GameConfig, Position } from '@firstpass/schema';
 import { shortName } from './useGame';
 
@@ -27,7 +27,7 @@ export function describe(e: LiveEvent, config: GameConfig, lineup: Partial<Recor
             : '?';
       let text = `${a.action} · ${who}`;
       if (a.cause) text += ' · ' + a.cause.toLowerCase();
-      if (a.rebound) text += ' · ' + (a.rebound === 'ours' ? 'our rebound' : a.rebound === 'theirs' ? 'their rebound' : 'out');
+      if (a.rebound) text += ' · ' + reboundLabel(a.rebound, a.team, config);
       if (a.at) text += ' · ' + zoneOf(a.at).label;
       return text;
     }
