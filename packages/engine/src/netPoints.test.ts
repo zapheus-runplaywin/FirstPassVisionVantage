@@ -29,8 +29,8 @@ describe('netPoints', () => {
       act({ team: 'us', action: 'Feed', player: 'GA' }),
       act({ team: 'us', action: 'Miss', player: 'GS', rebound: 'theirs' }),
     ]);
-    expect(np.byPosition).toEqual({ GA: 1.5, GS: -9 });
-    expect(np.team.them).toBe(3);
+    expect(np.byPosition).toEqual({ GA: 1.5, GS: -8 });
+    expect(np.team.them).toBe(6);
   });
 
   it('counts a feed once, at its best outcome, across our own rebound', () => {
@@ -50,8 +50,8 @@ describe('netPoints', () => {
       act({ team: 'us', action: 'Won it', player: 'WD' }),
       act({ team: 'them', action: 'Won it', cause: 'Deflection, gain' }),
     ]);
-    expect(np.byPosition).toEqual({ GD: 10, GK: 3, WD: 8 });
-    expect(np.team).toEqual({ us: 21 - 8, them: -10 - 8 - 8 + 8 });
+    expect(np.byPosition).toEqual({ GD: 10, GK: 6, WD: 8 });
+    expect(np.team).toEqual({ us: 24 - 8, them: -10 - 8 - 8 + 8 });
   });
 
   it('scores turnovers, touches and penalties', () => {

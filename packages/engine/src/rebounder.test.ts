@@ -96,31 +96,53 @@ describe('editing a rebound', () => {
   });
 });
 
-describe('Net Points for rebounds', () => {
-  it('credits our defensive rebound to the player who took it', () => {
+describe('Net Points against the published table', () => {
+  it('credits our defensive rebound (+6) to the player who took it', () => {
     const np = netPoints([...opening(), act({ team: 'them', action: 'Miss', rebound: 'theirs', rebounder: 'GK' })]);
-    expect(np.byPlayer.Ruby).toBe(3);
-    expect(np.byPosition.GK).toBe(3);
-    expect(np.team.us).toBe(3);
+    expect(np.byPlayer.Ruby).toBe(6);
+    expect(np.byPosition.GK).toBe(6);
+    // Their missed goal turnover is -8 at team level.
+    expect(np.team).toEqual({ us: 6, them: -8 });
   });
 
   it('keeps an unnamed defensive rebound at team level', () => {
     const np = netPoints([...opening(), act({ team: 'them', action: 'Miss', rebound: 'theirs' })]);
-    expect(np.team.us).toBe(3);
+    expect(np.team.us).toBe(6);
     expect(np.byPlayer).toEqual({});
   });
 
-  it('scores an offensive rebound +1 to the rebounder, and the club value when set', () => {
-    const log = [...opening(), act({ team: 'us', action: 'Miss', player: 'GS', rebound: 'ours', rebounder: 'GA' })];
-    expect(netPoints(log).byPlayer.Mia).toBe(1);
-    // The shooter still loses 1 for the miss.
-    expect(netPoints(log).byPlayer.Ava).toBe(-1);
-    expect(netPoints(log, { offensiveRebound: 0 }).byPlayer.Mia).toBeUndefined();
+  it('scores an offensive rebound +3 off a teammate\'s attempt and +1 off your own', () => {
+    const teammate = netPoints([...opening(), act({ team: 'us', action: 'Miss', player: 'GS', rebound: 'ours', rebounder: 'GA' })]);
+    expect(teammate.byPlayer).toEqual({ Ava: -1, Mia: 3 });
+    const own = netPoints([...opening(), act({ team: 'us', action: 'Miss', player: 'GS', rebound: 'ours', rebounder: 'GS' })]);
+    expect(own.byPlayer).toEqual({ Ava: -1 + 1 });
   });
 
-  it('keeps an unnamed offensive rebound at team level, and never scores theirs', () => {
+  it('scores an unnamed or unknown offensive rebound +1 at team level, and theirs the same', () => {
     expect(netPoints([...opening(), act({ team: 'us', action: 'Miss', player: 'GS', rebound: 'ours' })]).team.us).toBe(-1 + 1);
+    expect(netPoints([...opening(), act({ team: 'us', action: 'Miss', player: 'GS', rebound: 'ours', rebounder: '?' })]).team.us).toBe(-1 + 1);
     expect(netPoints([...opening(), act({ team: 'them', action: 'Miss', rebound: 'ours' })]).team.them).toBe(-1 + 1);
+  });
+
+  it('takes club values for both offensive rebounds', () => {
+    const log = [...opening(), act({ team: 'us', action: 'Miss', player: 'GS', rebound: 'ours', rebounder: 'GA' })];
+    expect(netPoints(log, { offensiveReboundTeammate: 0 }).byPlayer.Mia).toBeUndefined();
+    expect(netPoints(log, { offensiveReboundTeammate: 5 }).byPlayer.Mia).toBe(5);
+  });
+
+  it('scores a miss the other team gets as a missed goal turnover (-8), not -8 and -1', () => {
+    const lost = (rebound: 'theirs' | 'out') => netPoints([...opening(), act({ team: 'us', action: 'Miss', player: 'GS', rebound })]).byPlayer.Ava;
+    expect(lost('theirs')).toBe(-8);
+    expect(lost('out')).toBe(-8);
+  });
+
+  it('scores a miss with no rebound yet as missed goal regained (-1) until it is filled in', () => {
+    expect(netPoints([...opening(), act({ team: 'us', action: 'Miss', player: 'GS' })]).byPlayer.Ava).toBe(-1);
+  });
+
+  it('scores a feed with no attempt +0.5', () => {
+    const np = netPoints([...opening(), act({ team: 'us', action: 'Feed', player: 'WA' }), act({ team: 'us', action: 'Lost it', player: 'GA', cause: 'Bad pass' })]);
+    expect(np.byPlayer.Kim).toBe(0.5);
   });
 });
 
