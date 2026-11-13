@@ -10,12 +10,12 @@ export const NET_POINTS = {
   blockToAdvantage: 10,
   deflectionWithGain: 8,
   pickup: 8,
-  defensiveRebound: 6,
+  defensiveRebound: 3,
   /**
-   * Our own miss won back. Not in the published table, so 0 until Matt
-   * decides; clubs can set it with an override.
+   * Our own miss won back. Not in the published table; Matt chose a value
+   * smaller than a defensive rebound; Matt recalls the official values as OREB +1, DREB +3 (2026-11-13). Clubs can re-weight it.
    */
-  offensiveRebound: 0,
+  offensiveRebound: 1,
   deflectionNoGain: 4,
   goal: 2,
   feedWithGoalAssist: 2,
