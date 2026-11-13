@@ -1,13 +1,40 @@
 {
   "name": "@firstpass/engine",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "FirstPass's stats engine: folds a game's events into the score, shooting, Net Points, court time and other live figures.",
+  "license": "UNLICENSED",
+  "author": "PIVT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zapheus-runplaywin/FirstPassVisionVantage.git",
+    "directory": "packages/engine"
+  },
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "node ../../scripts/build-package.mjs"
   },
   "dependencies": {
     "@firstpass/schema": "workspace:*"

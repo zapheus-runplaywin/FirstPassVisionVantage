@@ -1,3 +1,4 @@
+export { ENGINE_VERSION } from './version';
 export { clockState, resumableEnd, setClockEvent, type ClockState } from './clock';
 export { fold } from './fold';
 export { findSeqGaps, type SeqGap } from './seq';

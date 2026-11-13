@@ -1,0 +1,59 @@
+# Publishes @firstpass/schema and @firstpass/engine (packages/schema, packages/engine) to the public npm
+# registry, where FirstPass Studio installs them. A package is published when main has a version of it that
+# npm doesn't have yet: a pull request that changes a package bumps its version in package.json (and the
+# engine's ENGINE_VERSION) and adds a line to its CHANGELOG.md.
+# npm trusted publishing: npm trusts this workflow in this repository (set once on npmjs.com, in each
+# package's settings), so no npm token is stored anywhere; each version also gets a provenance statement
+# linking it to the commit and run that built it. npm only lets a package that already exists name a trusted
+# publisher, so a new package's first version is published by hand once (see README, "Shared packages").
+name: Publish packages
+
+on:
+  push:
+    branches: [main]
+    paths: [packages/schema/**, packages/engine/**]
+  workflow_dispatch:
+
+# One publish at a time, never cancelled half way.
+concurrency:
+  group: publish-packages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # The OIDC token npm's trusted publishing checks (and the provenance statement).
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - run: npm install -g npm@11
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      # Builds and packs both packages into packs/ and tests the tarballs as npm users get them.
+      - run: scripts/test-packages.sh "$PWD/packs"
+      - name: Publish each package whose version npm doesn't have
+        # schema first: the engine depends on its exact version.
+        run: |
+          for name in schema engine; do
+            version=$(node -p "require('./packages/$name/package.json').version")
+            if npm view "@firstpass/$name@$version" version >/dev/null 2>&1; then
+              echo "@firstpass/$name $version is already on npm."
+            else
+              echo "Publishing @firstpass/$name $version."
+              npm publish "packs/firstpass-$name-$version.tgz" --access public --provenance
+            fi
+          done

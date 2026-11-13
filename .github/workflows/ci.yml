@@ -25,6 +25,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - name: Test the npm packages as they would be published
+        run: scripts/test-packages.sh
       - name: Bundle Vantage for Android
         working-directory: apps/vantage
         run: npx expo export --platform android --output-dir ../../dist/vantage
