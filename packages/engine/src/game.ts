@@ -33,6 +33,8 @@ export interface GameState {
   possession: Team | null;
   chain: { team: Team; from: ChainStart } | null;
   shotsByPosition: Partial<Record<Position, { attempts: number; goals: number }>>;
+  /** Our shots by the player who was in that position when the shot was taken. */
+  shotsByPlayer: Record<string, { attempts: number; goals: number; positions: Position[] }>;
   centrePass: Record<Team, { received: number; goals: number }>;
   gains: number;
   unforced: number;
@@ -55,6 +57,7 @@ export function initialState(config: GameConfig): GameState {
     possession: null,
     chain: null,
     shotsByPosition: {},
+    shotsByPlayer: {},
     centrePass: { us: { received: 0, goals: 0 }, them: { received: 0, goals: 0 } },
     gains: 0,
     unforced: 0,
@@ -131,6 +134,13 @@ function applyAction(state: GameState, a: ActionPayload): void {
           const s = (state.shotsByPosition[a.player] ??= { attempts: 0, goals: 0 });
           s.attempts++;
           if (goal) s.goals++;
+          const name = state.lineup?.[a.player];
+          if (name) {
+            const p = (state.shotsByPlayer[name] ??= { attempts: 0, goals: 0, positions: [] });
+            p.attempts++;
+            if (goal) p.goals++;
+            if (!p.positions.includes(a.player)) p.positions.push(a.player);
+          }
         }
         q.shots++;
         if (goal) q.goals++;

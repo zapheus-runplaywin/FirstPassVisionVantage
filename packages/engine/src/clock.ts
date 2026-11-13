@@ -39,3 +39,31 @@ export function clockState(events: readonly GameEvent[], quarterMs: number, now:
   if (s.running) s.remainingMs = Math.max(0, s.remainingMs - (now - since));
   return s;
 }
+
+/**
+ * The event that sets the quarter clock to `clockMs` (to match the official
+ * scoring clock) without changing whether it is running: a running clock is
+ * restarted from the new time, a stopped one is stopped at it. Clamped to the
+ * quarter length.
+ */
+export function setClockEvent(
+  clock: Pick<ClockState, 'period' | 'running'>,
+  clockMs: number,
+  quarterMs: number,
+): { type: 'clock_start' | 'clock_stop'; payload: { period: number; clockMs: number } } {
+  const ms = Math.round(Math.max(0, Math.min(quarterMs, clockMs)));
+  return { type: clock.running ? 'clock_start' : 'clock_stop', payload: { period: clock.period, clockMs: ms } };
+}
+
+/**
+ * The quarter end to delete to carry on playing a quarter that was ended by
+ * mistake: the latest one still standing, if no later quarter has started.
+ */
+export function resumableEnd(events: readonly GameEvent[]): string | null {
+  let end: string | null = null;
+  for (const e of liveEvents(events)) {
+    if (e.type === 'period_end') end = e.id;
+    else if (e.type === 'period_start') end = null;
+  }
+  return end;
+}

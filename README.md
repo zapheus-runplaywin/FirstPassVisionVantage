@@ -28,6 +28,10 @@ pnpm vision           # start the Vision dev server (press w for web)
 
 Add an Expo package to an app with `pnpm --filter @firstpass/vantage exec expo install <package>` so its version matches the Expo SDK.
 
+## PlayHQ client
+
+The shared PlayHQ client, `@firstpass/playhq`, lives in the FirstPass Studio repository (`packages/playhq`) and is published to the public npm registry. Add it to an app with `pnpm --filter @firstpass/vantage add @firstpass/playhq@^0.2.0`. To change it, open a Studio pull request that bumps its version; once it is published, raise the version range here.
+
 ## Test builds
 
 Builds run on Expo Application Services (EAS). `preview` makes an Android APK that installs directly on a tablet.

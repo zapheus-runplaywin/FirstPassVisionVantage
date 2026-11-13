@@ -1,15 +1,15 @@
-import { liveEvents, nextPeriodDefaults, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
+import { lineupsAt, liveEvents, nextPeriodDefaults, QUARTERS, resumableEnd, setClockEvent, timingRows, toAttackPoint, zoneOf, type LiveEvent, type ReviewIssue } from '@firstpass/engine';
 import type { Action, Cause, CorrectionPayload, CourtEnd, CourtPoint, EntryMode, PlayerRef, Position, Rebound, Team } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Court } from '../../components/Court';
 import { Ribbon, WhatPanel, WhoPanel } from '../../components/Panels';
-import { EditSheet, ExportSheet, StatsSheet, SubsSheet } from '../../components/Sheets';
+import { ClockSheet, EditSheet, ExportSheet, StatsSheet, SubsSheet } from '../../components/Sheets';
 import { Btn, fmtClock, Panel, s, Seg } from '../../components/ui';
 import { describe } from '../../game/describe';
 import { emptyPending, type Pending } from '../../game/entry';
@@ -18,7 +18,7 @@ import { useClock, useGame, type Game } from '../../game/useGame';
 import { getGame } from '../../lib/db';
 import { syncLabel, useSync } from '../../lib/sync';
 
-type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' };
+type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' } | { kind: 'clock' };
 
 /** Events the statistician entered and can see, edit or undo in the ribbon. */
 function ribbonEvents(events: LiveEvent[]): LiveEvent[] {
@@ -53,6 +53,8 @@ function Entry({ game }: { game: Game }) {
   const pairCode = sync.kind === 'synced' || sync.kind === 'queued' ? getGame(game.id)?.pairCode : null;
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const live = useMemo(() => liveEvents(game.events), [game.events]);
+  // Who was in each position when each action happened, so names stay right after subs.
+  const lineups = useMemo(() => lineupsAt(game.events), [game.events]);
   const lineup = state.lineup ?? {};
 
   const commit = useCallback(
@@ -131,18 +133,24 @@ function Entry({ game }: { game: Game }) {
     setSheet(null);
   }, [append, clock.period, clock.remainingMs, clock.running]);
 
+  // At 0:00 the clock stops but the quarter stays open: the official clock may be a little
+  // behind, and the last events still go in. The statistician ends the quarter.
+  const timeUp = clock.remainingMs <= 0;
   useEffect(() => {
-    if (clock.running && clock.remainingMs <= 0) endQuarter();
-  }, [clock.running, clock.remainingMs, endQuarter]);
+    if (clock.running && timeUp) {
+      append('clock_stop', { period: clock.period, clockMs: 0 });
+      void impactAsync(ImpactFeedbackStyle.Heavy);
+    }
+  }, [append, clock.period, clock.running, timeUp]);
 
-  const say = (e: LiveEvent) => describe(e, config, lineup);
+  const say = (e: LiveEvent) => describe(e, config, lineups.get(e.id) ?? lineup);
   const openSheet = sheet ? (
     sheet.kind === 'edit' ? (
       <EditSheet
         key={sheet.event.id}
         event={sheet.event}
         config={config}
-        lineup={lineup}
+        lineup={lineups.get(sheet.event.id) ?? lineup}
         title={`Edit · Q${sheet.event.payload.period} ${fmtClock(sheet.event.payload.clockMs)}`}
         onCorrect={correct}
         onClose={() => setSheet(null)}
@@ -151,11 +159,13 @@ function Entry({ game }: { game: Game }) {
       <SubsSheet
         lineup={lineup}
         bench={game.bench}
-        running={clock.running}
+        when={clock.inBreak ? `the start of Q${clock.period + 1}` : `Q${clock.period} ${fmtClock(clock.remainingMs)}`}
         onChange={(next, bench, detail) =>
           append('lineup_change', {
-            period: clock.period,
-            clockMs: clock.running ? clock.remainingMs : config.quarterMs,
+            // In a break the change is for the start of the next quarter; otherwise it is timed
+            // to the clock now, running or stopped (an injury sub with the clock stopped).
+            period: clock.inBreak ? clock.period + 1 : clock.period,
+            clockMs: clock.inBreak ? config.quarterMs : clock.remainingMs,
             team: 'us',
             lineup: next,
             bench,
@@ -164,10 +174,28 @@ function Entry({ game }: { game: Game }) {
         }
         onClose={() => setSheet(null)}
       />
+    ) : sheet.kind === 'clock' ? (
+      <ClockSheet
+        period={clock.period}
+        remainingMs={clock.remainingMs}
+        quarterMs={config.quarterMs}
+        running={clock.running}
+        onSet={(ms) => {
+          const e = setClockEvent(clock, ms, config.quarterMs);
+          append(e.type, e.payload);
+        }}
+        onClose={() => setSheet(null)}
+      />
     ) : sheet.kind === 'stats' ? (
-      <StatsSheet state={state} events={game.events} config={config} onClose={() => setSheet(null)} />
+      <StatsSheet
+        state={state}
+        events={game.events}
+        config={config}
+        remainingMs={clock.inBreak ? undefined : clock.remainingMs}
+        onClose={() => setSheet(null)}
+      />
     ) : (
-      <ExportSheet config={config} events={game.events} onClose={() => setSheet(null)} />
+      <ExportSheet gameId={game.id} config={config} events={game.events} onClose={() => setSheet(null)} />
     )
   ) : null;
 
@@ -196,7 +224,9 @@ function Entry({ game }: { game: Game }) {
           </Text>
         ) : null}
         <Text style={styles.q}>Q{clock.period}</Text>
-        <Text style={[styles.clock, compact && styles.clockCompact]}>{fmtClock(clock.remainingMs)}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Game clock, tap to set" onPress={() => setSheet({ kind: 'clock' })} style={styles.clockBtn}>
+          <Text style={[styles.clock, compact && styles.clockCompact, timeUp && styles.clockUp]}>{fmtClock(clock.remainingMs)}</Text>
+        </Pressable>
         <Btn label={clock.running ? 'Stop' : 'Start'} tone={clock.running ? 'target' : 'primary'} onPress={startStop} style={styles.topBtn} />
         <Text style={styles.score} numberOfLines={1}>
           {compact ? '' : `${config.us} `}<Text style={styles.scoreN}>{state.score.us}</Text> – <Text style={styles.scoreN}>{state.score.them}</Text>
@@ -213,7 +243,7 @@ function Entry({ game }: { game: Game }) {
           <Text style={[s.muted, sync.kind === 'lease lost' && styles.warnText]}>{syncLabel(sync)}</Text>
         ) : null}
         <Btn label="Stats" onPress={() => setSheet({ kind: 'stats' })} style={styles.topBtn} />
-        <Btn label={compact ? 'End Q' : 'End quarter'} onPress={endQuarter} style={styles.topBtn} />
+        <Btn label={compact ? 'End Q' : 'End quarter'} tone={timeUp ? 'primary' : 'target'} onPress={endQuarter} style={styles.topBtn} />
       </View>
       <View style={styles.main}>
         <View style={styles.left}>
@@ -240,6 +270,7 @@ function Entry({ game }: { game: Game }) {
               state={state}
               mode={state.mode}
               teamName={teamName}
+              names={{ us: config.us, them: config.them }}
               onAction={onAction}
               onCause={onCause}
               onRebound={onRebound}
@@ -306,10 +337,15 @@ function BreakReview({
   const [end, setEnd] = useState<CourtEnd>(defaults.attackEnd);
   const [cp, setCp] = useState<Team>(defaults.centrePass);
   const [mode, setMode] = useState<EntryMode>(state.mode);
-  const fullTime = state.period >= 4;
+  const fullTime = state.period >= QUARTERS;
+  // Seconds from the first clock start, to find each issue in the game video.
+  const videoAt = useMemo(() => new Map(timingRows(config, game.events).map((r) => [r.seq, r.sinceStartS])), [config, game.events]);
   const q = state.quarters[state.period];
   const actionsThisQuarter = live.filter((e) => e.type === 'action' && e.payload.period === state.period).length;
   const other = <T extends string>(v: T, a: T, b: T) => (v === a ? b : a);
+
+  const resumeId = resumableEnd(game.events);
+  const resume = () => resumeId && append('correction', { target: resumeId, op: 'delete' });
 
   const startNext = () =>
     append('period_start', { period: defaults.period, clockMs: config.quarterMs, attackEnd: end, centrePass: cp, mode });
@@ -324,7 +360,7 @@ function BreakReview({
               {config.us} {state.score.us} – {state.score.them} {config.them}
             </Text>
             <Text style={s.muted}>
-              Q{state.period}: {q ? `${q.us}–${q.them}` : '0–0'} · {actionsThisQuarter} events this quarter
+              Q{state.period}: {q ? `${q.us}–${q.them}` : '0–0'} · {actionsThisQuarter} {actionsThisQuarter === 1 ? "event" : "events"} this quarter
             </Text>
           </Panel>
           {!fullTime ? (
@@ -346,14 +382,23 @@ function BreakReview({
               </Panel>
             </>
           ) : null}
-          <Text style={s.h2}>To check</Text>
+          <Text style={s.h2}>{fullTime ? 'Post-game audit' : 'To check'}</Text>
+          {fullTime ? (
+            <Text style={s.muted}>
+              Everything to check from all four quarters. The video time counts from the first clock start: add it to where the scoring clock starts in the
+              footage.
+            </Text>
+          ) : null}
           <Panel>
             {game.issues.length === 0 ? <Text style={styles.ok}>Nothing to check.</Text> : null}
             {game.issues.map((i, n) => (
               <View key={`${i.kind}-${i.event.id}-${n}`} style={styles.issue}>
-                <Text style={styles.issueWhen}>
-                  Q{i.event.payload.period} {fmtClock(i.event.payload.clockMs)}
-                </Text>
+                <View>
+                  <Text style={styles.issueWhen}>
+                    Q{i.event.payload.period} {fmtClock(i.event.payload.clockMs)}
+                  </Text>
+                  {fullTime && videoAt.has(i.event.seq) ? <Text style={styles.issueVideo}>video {fmtClock((videoAt.get(i.event.seq) ?? 0) * 1000)}</Text> : null}
+                </View>
                 <Text style={[s.text, styles.flex]}>{issueText(i, say, config)}</Text>
                 <Btn label="Fix" onPress={() => onSheet({ kind: 'edit', event: i.event })} style={styles.fix} />
               </View>
@@ -369,6 +414,7 @@ function BreakReview({
             {!fullTime ? <Btn label="Start next quarter" tone="primary" big onPress={startNext} /> : null}
             <Btn label="Subs" onPress={() => onSheet({ kind: 'subs' })} />
             <Btn label="Stats" onPress={() => onSheet({ kind: 'stats' })} />
+            {resumeId ? <Btn label={`Back to Q${state.period}`} onPress={resume} /> : null}
             <Btn label="Export log" onPress={() => onSheet({ kind: 'export' })} />
             <Btn label="Home" onPress={() => router.replace('/')} />
           </View>
@@ -399,6 +445,8 @@ const styles = StyleSheet.create({
   clock: { color: colors.text, fontSize: 28, fontWeight: '700', fontVariant: ['tabular-nums'], minWidth: 84, textAlign: 'center' },
   clockCompact: { fontSize: 22, minWidth: 64 },
   warnText: { color: colors.attention, fontWeight: '700' },
+  clockBtn: { borderRadius: 8, borderWidth: 1, borderColor: colors.surfaceLine, paddingHorizontal: 6, minHeight: 44, justifyContent: 'center' },
+  clockUp: { color: colors.attention },
   topBtn: { minHeight: 44 },
   score: { color: colors.textMuted, fontSize: 17, fontWeight: '700' },
   scoreN: { color: colors.text },
@@ -420,6 +468,7 @@ const styles = StyleSheet.create({
   ok: { color: '#5fd38d', fontWeight: '600' },
   issue: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, borderBottomColor: colors.surfaceLine, borderBottomWidth: 1 },
   issueWhen: { color: colors.textMuted, fontVariant: ['tabular-nums'], minWidth: 72 },
+  issueVideo: { color: colors.textMuted, fontSize: 12, fontVariant: ['tabular-nums'] },
   fix: { minHeight: 44 },
   breakActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
 });

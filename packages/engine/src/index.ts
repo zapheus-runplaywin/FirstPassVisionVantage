@@ -1,4 +1,4 @@
-export { clockState, type ClockState } from './clock';
+export { clockState, resumableEnd, setClockEvent, type ClockState } from './clock';
 export { fold } from './fold';
 export { findSeqGaps, type SeqGap } from './seq';
 export { liveEvents, type LiveEvent } from './corrections';
@@ -26,3 +26,7 @@ export {
 export { amberReasons, LONG_GAP_MS, reviewGame, type AmberReason, type ReviewIssue } from './review';
 export { NET_POINTS, netPoints, type NetPoints, type NetPointsTable } from './netPoints';
 export { TIMING_COLUMNS, timingRows, timingTable, type TimingRow } from './timing';
+export { courtTime, lineupsAt, type CourtTime, type Lineup } from './players';
+export { gameStatus, QUARTERS, type GameStatus } from './status';
+export { gameFile, gameFileName, type GameFile } from './gameFile';
+export { reboundKind, reboundLabel, reboundTeam } from './rebound';

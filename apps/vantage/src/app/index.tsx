@@ -4,13 +4,14 @@ import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Btn, s } from '../components/ui';
+import { gameStatus, type GameStatus } from '@firstpass/engine';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
 import { clubs } from '../lib/clubs';
-import { listGames, type SavedGame } from '../lib/db';
+import { listGames, loadEvents, type SavedGame } from '../lib/db';
 import { chooseClub, leaveClub, useClub } from '../lib/supabase';
 
 export default function Home() {
-  const [games, setGames] = useState<SavedGame[]>([]);
+  const [games, setGames] = useState<(SavedGame & { status: GameStatus })[]>([]);
   const session = useSession();
   const club = useClub();
   const [code, setCode] = useState('');
@@ -20,7 +21,7 @@ export default function Home() {
     if (chooseClub(code)) setCodeError(null);
     else setCodeError('No club has that code. Check it with your club admin.');
   };
-  useFocusEffect(useCallback(() => setGames(listGames()), []));
+  useFocusEffect(useCallback(() => setGames(listGames().map((g) => ({ ...g, status: gameStatus(g.config, loadEvents(g.id)) }))), []));
   const signIn = () =>
     signInWithGoogle().then(
       () => setSignInError(null),
@@ -76,6 +77,9 @@ export default function Home() {
               <Text style={styles.gameName}>
                 {g.config.us} v {g.config.them}
               </Text>
+              <Text style={styles.gameStatus}>
+                {g.status.label} · {g.status.score.us}–{g.status.score.them}
+              </Text>
               <Text style={styles.gameDate}>{new Date(g.createdAt).toLocaleString()}</Text>
             </View>
           </Btn>
@@ -93,6 +97,7 @@ const styles = StyleSheet.create({
   game: { alignItems: 'stretch' },
   gameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   gameName: { color: colors.targetText, fontSize: 17, fontWeight: '700' },
+  gameStatus: { color: colors.targetText, fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
   gameDate: { color: '#4b5a73', fontSize: 13 },
   account: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
   error: { color: colors.attention },
