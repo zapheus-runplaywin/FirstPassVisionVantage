@@ -1,7 +1,7 @@
 // Tests for publish-packages.mjs: the package.json Studio installs. Run: node --test scripts/test-publish-packages.mjs
 import test from 'node:test';
 import assert from 'node:assert';
-import { publishedManifest, registryName } from './publish-packages.mjs';
+import { notPublished, publishedManifest, registryName } from './publish-packages.mjs';
 
 const pkg = {
   name: '@firstpass/playhq', version: '0.2.0', type: 'module', main: 'src/index.ts', types: 'src/index.ts', 'react-native': 'src/index.ts',
@@ -27,4 +27,12 @@ test('points at the built files and the GitHub registry, without workspace-only 
 
 test('refuses a package that still depends on another through the workspace', () => {
   assert.throws(() => publishedManifest({ ...pkg, dependencies: { '@firstpass/schema': 'workspace:*' } }), /publish @firstpass\/schema too/);
+});
+
+// GitHub Packages' answer the first time a package is published (the first "Publish packages" run).
+test('tells a package not published yet apart from a real failure', () => {
+  assert.equal(notPublished('npm error code E404\nnpm error 404 Not Found - GET https://npm.pkg.github.com/@zapheus-runplaywin%2fplayhq - npm package "playhq" does not exist under owner "zapheus-runplaywin"'), true);
+  assert.equal(notPublished("npm error 404  '@zapheus-runplaywin/playhq@0.2.0' is not in this registry."), true);
+  assert.equal(notPublished('npm error code E401\nnpm error 401 Unauthorized'), false);
+  assert.equal(notPublished(null), false);
 });
