@@ -25,8 +25,8 @@ updates:
         update-types: [minor, patch]
     ignore:
       # TypeScript 7 is the native (Go) compiler: its package no longer exports the
-      # stable JavaScript compiler API or typescript/bin/tsc (packages/playhq/build.mjs
-      # runs that), and Expo has not moved to it yet. Upgrade by hand once Expo supports it.
+      # stable JavaScript compiler API or typescript/bin/tsc, and Expo has not moved
+      # to it yet. Upgrade by hand once Expo supports it.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
       # Expo pins these to each SDK release. They move together on an SDK upgrade

@@ -25,10 +25,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - name: Shared packages install and load as Studio will (packed, installed, require() and import)
-        run: |
-          node --test scripts/test-publish-packages.mjs
-          node scripts/publish-packages.mjs --check
       - name: Bundle Vantage for Android
         working-directory: apps/vantage
         run: npx expo export --platform android --output-dir ../../dist/vantage
