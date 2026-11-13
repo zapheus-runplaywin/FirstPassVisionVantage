@@ -34,7 +34,17 @@ Add an Expo package to an app with `pnpm --filter @firstpass/vantage exec expo i
 
 - To change one, bump its `version` in `package.json` (for the engine, `ENGINE_VERSION` in `src/version.ts` too; a test checks they match) and add a line to its `CHANGELOG.md`. The engine depends on the exact schema version, so a schema bump also bumps the engine. When the pull request merges, the "Publish packages" workflow publishes every version npm doesn't have yet.
 - `scripts/test-packages.sh` builds and packs both packages the way the workflow does, installs the tarballs into an empty project and checks them with plain Node (`require()` and `import`) and strict TypeScript. CI runs it on every pull request.
-- A new package's first version is published by hand once, because npm only lets an existing package name a trusted publisher. Signed in to npm as a member of the `firstpass` org: `pnpm install && scripts/test-packages.sh "$PWD/packs"`, then `npm publish packs/firstpass-<name>-<version>.tgz --access public --provenance=false`. Then on npmjs.com, in the package's settings, add a trusted publisher: GitHub Actions, repository `zapheus-runplaywin/FirstPassVisionVantage`, workflow `publish-packages.yml`.
+- A new package's first version is published by hand once, because npm only lets an existing package name a trusted publisher. You need pnpm (the version in `packageManager` in the root `package.json`, for example `npm install -g pnpm@10.28.0`) and to be signed in to npm as a member of the `firstpass` org (`npm login`, then `npm whoami`). From the root of an up-to-date clone of `main`, paste this as one block; it stops at the first failure, so nothing is published unless the tests pass:
+
+  ```bash
+  pnpm install &&
+    scripts/test-packages.sh "$PWD/packs" &&
+    ls ./packs/*.tgz &&
+    npm publish ./packs/firstpass-schema-0.1.0.tgz --access public --provenance=false &&
+    npm publish ./packs/firstpass-engine-0.1.0.tgz --access public --provenance=false
+  ```
+
+  Change the versions to match the packages' `package.json`. Publish the schema before the engine, because the engine depends on it. Keep the `./` in front of `packs/`: without it, npm reads a missing tarball path as a GitHub repository and fails with "Permission denied (publickey)". npm's warning `Unknown project config "node-linker"` is harmless (that setting in `.npmrc` is for pnpm). Then on npmjs.com, in each package's settings, add a trusted publisher: GitHub Actions, repository `zapheus-runplaywin/FirstPassVisionVantage`, workflow `publish-packages.yml`.
 
 ## PlayHQ client
 
