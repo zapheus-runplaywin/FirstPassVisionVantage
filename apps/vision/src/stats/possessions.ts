@@ -58,8 +58,20 @@ export interface Possession {
 
 export type Lineup = Partial<Record<Position, string>>;
 
+/** One player change from a lineup_change event: on court at a position, replacing someone. */
+export interface Change {
+  team: Team;
+  period: number;
+  clockMs: number;
+  position: Position;
+  on: string;
+  off: string;
+}
+
 export interface GameModel {
   possessions: Possession[];
+  /** Player changes in log order, both teams (the opposition's when the tablet records names). */
+  changes: Change[];
   /** Our current lineup, from the latest lineup change. */
   lineup: Lineup;
   /** The quarter the log is up to. */
@@ -71,8 +83,10 @@ const pos = (p: string | null | undefined): Position | null => (p && p !== '?' ?
 
 export function buildModel(events: readonly GameEvent[]): GameModel {
   const possessions: Possession[] = [];
+  const changes: Change[] = [];
   let open: Possession | null = null;
   let lineup: Lineup = {};
+  let theirLineup: Lineup = {};
   let period = 1;
 
   /** Ends the open possession, if any, at a quarter boundary. */
@@ -99,9 +113,18 @@ export function buildModel(events: readonly GameEvent[]): GameModel {
       case 'period_end':
         closeOpen();
         break;
-      case 'lineup_change':
-        if (e.payload.team === 'us') lineup = { ...e.payload.lineup };
+      case 'lineup_change': {
+        const before = e.payload.team === 'us' ? lineup : theirLineup;
+        const after = { ...e.payload.lineup };
+        for (const position of Object.keys(after) as Position[]) {
+          const on = after[position];
+          const off = before[position];
+          if (on && off && on !== off) changes.push({ team: e.payload.team, period: e.payload.period, clockMs: e.payload.clockMs, position, on, off });
+        }
+        if (e.payload.team === 'us') lineup = after;
+        else theirLineup = after;
         break;
+      }
       case 'action': {
         const a = e.payload;
         const p = a.period;
@@ -153,9 +176,14 @@ export function buildModel(events: readonly GameEvent[]): GameModel {
         break;
     }
   }
-  return { possessions, lineup, period };
+  return { possessions, changes, lineup, period };
 }
 
 export function shotsOf(list: readonly Possession[]): Shot[] {
   return list.flatMap((p) => p.shots);
+}
+
+/** A comparable game time: later in the game is larger. */
+export function gameTime(period: number, clockMs: number): number {
+  return period * 10_000_000 - clockMs;
 }

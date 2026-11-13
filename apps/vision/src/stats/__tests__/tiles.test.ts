@@ -32,7 +32,7 @@ describe('tiles', () => {
     const early = tile('ggl', 'cp');
     expect(early).toMatchObject({ figure: '67%', count: '2 of 3', early: true, need: '3 of 8 needed', trend: '', arrow: null });
     const ready = tile('gggggglm', 'cp');
-    expect(ready).toMatchObject({ figure: '75%', count: '6 of 8', early: false, trend: 'last 8: 6 of 8' });
+    expect(ready).toMatchObject({ figure: '75%', count: '6 of 8', early: false, trend: 'last 8: 6 of 8 (75%)' });
   });
 
   it('shows an arrow only when the last 8 are 20 points away from the game', () => {

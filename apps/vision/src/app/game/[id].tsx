@@ -1,12 +1,15 @@
 import { colors } from '@firstpass/ui';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AlertCard, NoCard } from '../../components/AlertCard';
 import { MiniCourt } from '../../components/MiniCourt';
 import { OnCourtStrip } from '../../components/OnCourtStrip';
 import { Tiles } from '../../components/Tiles';
 import { Btn, ui } from '../../components/ui';
+import { useCardPrefs } from '../../live/useCardPrefs';
+import { runAlerts, visibleLive } from '../../stats/alerts';
 import { lossesThisQuarter, onCourt } from '../../stats/markers';
 import { buildModel } from '../../stats/possessions';
 import { tiles } from '../../stats/tiles';
@@ -29,6 +32,9 @@ export default function LiveGame() {
     const model = buildModel(events);
     return { tiles: tiles(model), players: onCourt(model), losses: lossesThisQuarter(model), period: model.period };
   }, [events]);
+  const alerts = useMemo(() => runAlerts(events), [events]);
+  const { prefs, toggleStar, dismiss } = useCardPrefs(id);
+  const [tab, setTab] = useState<Tab>('live');
 
   if (game === undefined && !gameError) {
     return (
@@ -48,6 +54,8 @@ export default function LiveGame() {
 
   const fresh = freshness(feed, summary.running, now);
   const wide = width >= TWO_COLUMNS;
+  const live = visibleLive(alerts.live, prefs.muted, glance.period);
+  const top = live[0];
 
   return (
     <SafeAreaView style={ui.screen}>
@@ -61,9 +69,38 @@ export default function LiveGame() {
         <Score summary={summary} />
         {events.length === 0 ? (
           <Text style={[ui.muted, styles.centerText]}>Waiting for the first stats from the statistician's tablet.</Text>
+        ) : tab === 'alerts' ? (
+          <View style={styles.alerts}>
+            <Heading left="Alerts · this game" right={`${live.length} live · ${alerts.log.length} total`} />
+            {alerts.log.length === 0 ? <Text style={ui.muted}>No cards yet this game.</Text> : null}
+            {alerts.log.map((c) => {
+              const dismissed = prefs.muted.get(c.subject) === c.period && c.retiredWhen === null;
+              return (
+                <AlertCard
+                  key={c.id}
+                  card={c}
+                  starred={prefs.starred.has(c.id)}
+                  onStar={() => toggleStar(c.id)}
+                  onDismiss={dismissed ? undefined : () => dismiss(c.subject, glance.period)}
+                />
+              );
+            })}
+          </View>
         ) : (
           <View style={[styles.grid, wide && styles.gridWide]}>
             <View style={[styles.col, wide && styles.colWide]}>
+              {top ? (
+                <AlertCard card={top} starred={prefs.starred.has(top.id)} onStar={() => toggleStar(top.id)} onDismiss={() => dismiss(top.subject, glance.period)} />
+              ) : (
+                <NoCard />
+              )}
+              {live.length > 1 ? (
+                <Pressable accessibilityRole="button" onPress={() => setTab('alerts')} style={styles.more}>
+                  <Text style={styles.moreText}>
+                    {live.length - 1} more live card{live.length > 2 ? 's' : ''} →
+                  </Text>
+                </Pressable>
+              ) : null}
               <Heading left="Conversions · this game" />
               <Tiles tiles={glance.tiles} />
             </View>
@@ -76,7 +113,39 @@ export default function LiveGame() {
           </View>
         )}
       </ScrollView>
+      <TabBar tab={tab} onTab={setTab} badge={live.length} />
     </SafeAreaView>
+  );
+}
+
+type Tab = 'live' | 'alerts';
+
+const TABS: readonly (readonly [Tab, string])[] = [
+  ['live', 'Live'],
+  ['alerts', 'Alerts'],
+];
+
+function TabBar({ tab, onTab, badge }: { tab: Tab; onTab: (t: Tab) => void; badge: number }) {
+  return (
+    <View style={styles.tabs} accessibilityRole="tablist">
+      {TABS.map(([t, label]) => (
+        <Pressable
+          key={t}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === t }}
+          accessibilityLabel={t === 'alerts' && badge ? `${label}, ${badge} live` : label}
+          onPress={() => onTab(t)}
+          style={[styles.tab, tab === t && styles.tabOn]}
+        >
+          <Text style={[styles.tabText, tab === t && styles.tabTextOn]}>{label}</Text>
+          {t === 'alerts' && badge ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{badge}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
@@ -171,6 +240,16 @@ const styles = StyleSheet.create({
   banner: { marginHorizontal: 12, marginTop: 8, padding: 12, borderRadius: 10, backgroundColor: colors.attention },
   bannerText: { color: '#000000', fontSize: 15, fontWeight: '700' },
   body: { padding: 16, paddingTop: 8, gap: 12 },
+  alerts: { gap: 10, width: '100%', maxWidth: 720, alignSelf: 'center' },
+  more: { paddingVertical: 8 },
+  moreText: { color: colors.selected, fontSize: 14, fontWeight: '700' },
+  tabs: { flexDirection: 'row', backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.surfaceLine },
+  tab: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, borderTopWidth: 3, borderTopColor: 'transparent' },
+  tabOn: { borderTopColor: colors.selected },
+  tabText: { color: colors.textMuted, fontSize: 15, fontWeight: '700' },
+  tabTextOn: { color: colors.selected },
+  badge: { backgroundColor: colors.attention, borderRadius: 999, minWidth: 20, paddingHorizontal: 6, paddingVertical: 1, alignItems: 'center' },
+  badgeText: { color: colors.text, fontSize: 12, fontWeight: '800' },
   grid: { gap: 4 },
   gridWide: { flexDirection: 'row', alignItems: 'flex-start', gap: 20 },
   col: { gap: 4 },

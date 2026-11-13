@@ -30,7 +30,7 @@ export interface Tile {
   early: boolean;
   /** Why it's too early, e.g. "3 of 8 needed". */
   need: string;
-  /** e.g. "last 8: 3 of 8", empty until there are eight. */
+  /** e.g. "last 8: 3 of 8 (38%)", empty until there are eight. */
   trend: string;
   /** Whether the last eight are clearly better or worse for us. */
   arrow: 'better up' | 'better down' | 'worse up' | 'worse down' | null;
@@ -52,7 +52,7 @@ function conversion(key: TileKey, label: string, source: Source, ours: Possessio
     fill: list.length ? goals / list.length : 0,
     early,
     need: `${list.length} of ${MIN_POSSESSIONS} needed`,
-    trend: last.length >= WINDOW ? `last ${WINDOW}: ${lastGoals} of ${WINDOW}` : '',
+    trend: last.length >= WINDOW ? `last ${WINDOW}: ${lastGoals} of ${WINDOW} (${pct(lastGoals, WINDOW)})` : '',
     arrow: early || last.length < WINDOW ? null : rateArrow(lastGoals / WINDOW - goals / list.length),
   };
 }
@@ -83,7 +83,7 @@ export function tiles(model: GameModel): Tile[] {
     fill: shots.length ? goals / shots.length : 0,
     early: shootEarly,
     need: `${shots.length} of ${MIN_SHOTS} shots`,
-    trend: lastShots.length >= WINDOW ? `last ${WINDOW}: ${lastGoals} of ${WINDOW}` : '',
+    trend: lastShots.length >= WINDOW ? `last ${WINDOW}: ${lastGoals} of ${WINDOW} (${pct(lastGoals, WINDOW)})` : '',
     arrow: shootEarly || lastShots.length < WINDOW ? null : rateArrow(lastGoals / WINDOW - goals / shots.length),
   });
 
