@@ -191,7 +191,7 @@ function Entry({ game }: { game: Game }) {
         onClose={() => setSheet(null)}
       />
     ) : (
-      <ExportSheet config={config} events={game.events} onClose={() => setSheet(null)} />
+      <ExportSheet gameId={game.id} config={config} events={game.events} onClose={() => setSheet(null)} />
     )
   ) : null;
 
