@@ -1,7 +1,7 @@
 import type { ActionPayload, GameConfig, GameEvent } from '@firstpass/schema';
 import { describe, expect, it } from 'vitest';
 import { deriveGame } from './game';
-import { reboundLabel } from './rebound';
+import { reboundKind, reboundLabel, reboundTeam } from './rebound';
 
 /*
  * Rebounds are recorded as OREB ('ours': the shooting team gets its own miss
@@ -47,20 +47,31 @@ describe('rebounds', () => {
   });
 });
 
-describe('reboundLabel', () => {
+describe('rebound labels', () => {
   const names = { us: 'Thunder', them: 'Storm' };
 
   it('names the team that gets the ball after our miss', () => {
-    expect(reboundLabel('ours', 'us', names)).toBe('Thunder OREB');
-    expect(reboundLabel('theirs', 'us', names)).toBe('Storm DREB');
+    expect(reboundLabel('ours', 'us', names)).toBe('OREB · Thunder');
+    expect(reboundLabel('theirs', 'us', names)).toBe('DREB · Storm');
+    expect(reboundTeam('ours', 'us')).toBe('us');
+    expect(reboundTeam('theirs', 'us')).toBe('them');
   });
 
   it('names the team that gets the ball after their miss', () => {
-    expect(reboundLabel('ours', 'them', names)).toBe('Storm OREB');
-    expect(reboundLabel('theirs', 'them', names)).toBe('Thunder DREB');
+    expect(reboundLabel('ours', 'them', names)).toBe('OREB · Storm');
+    expect(reboundLabel('theirs', 'them', names)).toBe('DREB · Thunder');
+    expect(reboundTeam('ours', 'them')).toBe('them');
+    expect(reboundTeam('theirs', 'them')).toBe('us');
   });
 
-  it('says out of court for a miss that goes out', () => {
-    expect(reboundLabel('out', 'us', names)).toBe('Out of court');
+  it('gives the button text whichever team shot', () => {
+    expect(reboundKind('ours')).toBe('OREB');
+    expect(reboundKind('theirs')).toBe('DREB');
+    expect(reboundKind('out')).toBe('Out');
+  });
+
+  it('says Out for a miss that goes out of court', () => {
+    expect(reboundLabel('out', 'us', names)).toBe('Out');
+    expect(reboundTeam('out', 'them')).toBeNull();
   });
 });

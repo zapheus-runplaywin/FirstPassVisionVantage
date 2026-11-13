@@ -1,4 +1,4 @@
-import { legalPositions, reboundLabel, type GameState, type LiveEvent } from '@firstpass/engine';
+import { legalPositions, reboundKind, reboundLabel, reboundTeam, type GameState, type LiveEvent } from '@firstpass/engine';
 import { CAUSES_LOST, CAUSES_WON, POSITIONS, type Action, type Cause, type EntryMode, type PlayerRef, type Rebound, type Team } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -89,15 +89,18 @@ export function WhatPanel({
     return (
       <Panel title="What" hint="After the miss" style={st.prompt}>
         <View style={st.grid}>
-          {(
-            [
-              'ours',
-              'theirs',
-              'out',
-            ] as const
-          ).map((v) => (
-            <Btn key={v} label={reboundLabel(v, pending.team ?? 'us', names)} big onPress={() => onRebound(v)} style={st.cell} />
-          ))}
+          {(['ours', 'theirs', 'out'] as const).map((v) => {
+            const shooter = pending.team ?? 'us';
+            const team = reboundTeam(v, shooter);
+            return (
+              <Btn key={v} label={reboundLabel(v, shooter, names)} big onPress={() => onRebound(v)} style={st.cell}>
+                <Text style={st.rebKind}>{reboundKind(v)}</Text>
+                <Text style={st.rebTeam} numberOfLines={1}>
+                  {team ? names[team] : 'of court'}
+                </Text>
+              </Btn>
+            );
+          })}
         </View>
         <Btn label="Skip, fill at the break" tone="quiet" onPress={onSkip} />
       </Panel>
@@ -161,6 +164,9 @@ export function Ribbon({
 }
 
 export const st = StyleSheet.create({
+  /** After-the-miss buttons: OREB or DREB big, the team that gets the ball small. */
+  rebKind: { fontSize: 22, fontWeight: '800', color: colors.targetText, textAlign: 'center' },
+  rebTeam: { fontSize: 13, fontWeight: '600', color: colors.targetText, opacity: 0.7, textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   chip: { width: '10.5%', flexGrow: 1, minHeight: 56, borderRadius: 8, backgroundColor: colors.target, alignItems: 'center', justifyContent: 'center', padding: 2 },
   chipOff: { backgroundColor: colors.targetDim },
