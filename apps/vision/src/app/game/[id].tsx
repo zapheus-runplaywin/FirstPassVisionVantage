@@ -3,7 +3,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MiniCourt } from '../../components/MiniCourt';
+import { OnCourtStrip } from '../../components/OnCourtStrip';
+import { Tiles } from '../../components/Tiles';
 import { Btn, ui } from '../../components/ui';
+import { lossesThisQuarter, onCourt } from '../../stats/markers';
+import { buildModel } from '../../stats/possessions';
+import { tiles } from '../../stats/tiles';
 import { freshness, scoreSummary, type Freshness, type ScoreSummary } from '../../live/summary';
 import { useLiveGame, useNow } from '../../live/useLiveGame';
 import type { Connection } from '../../live/feed';
@@ -18,6 +24,11 @@ export default function LiveGame() {
   const { width } = useWindowDimensions();
   const events = feed.log.events;
   const summary = useMemo(() => (game ? scoreSummary(game.config, events, now) : null), [game, events, now]);
+  // The figures change only when events do, not every clock tick.
+  const glance = useMemo(() => {
+    const model = buildModel(events);
+    return { tiles: tiles(model), players: onCourt(model), losses: lossesThisQuarter(model), period: model.period };
+  }, [events]);
 
   if (game === undefined && !gameError) {
     return (
@@ -46,72 +57,69 @@ export default function LiveGame() {
         <ConnectionChip connection={feed.connection} fresh={fresh} />
       </View>
       {fresh.kind !== 'fresh' ? <StaleBanner fresh={fresh} error={feed.error} /> : null}
-      <ScrollView contentContainerStyle={[styles.body, wide && styles.bodyWide]}>
-        <View style={[styles.main, wide && styles.mainWide]}>
-          <Score summary={summary} big={wide} />
-          {events.length === 0 ? (
-            <Text style={[ui.muted, styles.centerText]}>Waiting for the first stats from the statistician's tablet.</Text>
-          ) : null}
-        </View>
-        {summary.quarters.length > 0 ? (
-          <View style={[styles.side, wide && styles.sideWide]}>
-            <Quarters summary={summary} />
+      <ScrollView contentContainerStyle={styles.body}>
+        <Score summary={summary} />
+        {events.length === 0 ? (
+          <Text style={[ui.muted, styles.centerText]}>Waiting for the first stats from the statistician's tablet.</Text>
+        ) : (
+          <View style={[styles.grid, wide && styles.gridWide]}>
+            <View style={[styles.col, wide && styles.colWide]}>
+              <Heading left="Conversions · this game" />
+              <Tiles tiles={glance.tiles} />
+            </View>
+            <View style={[styles.col, wide && styles.colWide]}>
+              <Heading left={`Where we lost it · Q${glance.period}`} right={`${glance.losses.length} lost`} />
+              <MiniCourt losses={glance.losses} />
+              <Heading left="On court" right={summary.names.us} />
+              <OnCourtStrip players={glance.players} />
+            </View>
           </View>
-        ) : null}
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Score({ summary, big }: { summary: ScoreSummary; big: boolean }) {
+function Heading({ left, right }: { left: string; right?: string }) {
+  return (
+    <View style={styles.heading}>
+      <Text style={styles.headingLeft}>{left}</Text>
+      {right ? <Text style={styles.headingRight}>{right}</Text> : null}
+    </View>
+  );
+}
+
+/** Score, quarter and clock in one band, with the quarter scores under it. */
+function Score({ summary }: { summary: ScoreSummary }) {
   const playing = summary.phase === 'playing';
   return (
-    <View style={styles.scoreBlock} accessible accessibilityLabel={`${summary.names.us} ${summary.score.us}, ${summary.names.them} ${summary.score.them}, ${summary.label}`}>
+    <View
+      style={styles.scoreBlock}
+      accessible
+      accessibilityLabel={`${summary.names.us} ${summary.score.us}, ${summary.names.them} ${summary.score.them}, ${summary.label}${playing ? ` ${summary.clock}` : ''}`}
+    >
       <View style={styles.scoreRow}>
-        <Side name={summary.names.us} score={summary.score.us} big={big} />
-        <Text style={[styles.dash, big && styles.dashBig]}>–</Text>
-        <Side name={summary.names.them} score={summary.score.them} big={big} />
+        <Text style={styles.team} numberOfLines={1}>
+          {summary.names.us}
+        </Text>
+        <Text style={styles.score}>
+          {summary.score.us}
+          <Text style={styles.dash}> – </Text>
+          {summary.score.them}
+        </Text>
+        <Text style={[styles.team, styles.teamRight]} numberOfLines={1}>
+          {summary.names.them}
+        </Text>
       </View>
       <View style={styles.clockRow}>
         <Text style={styles.period}>{summary.label}</Text>
         {playing ? <Text style={[styles.clock, !summary.running && styles.clockStopped]}>{summary.clock}</Text> : null}
+        {playing && !summary.running ? <Text style={ui.muted}>stopped</Text> : null}
+        {summary.centrePass ? <Text style={ui.muted}>· CP {summary.names[summary.centrePass]}</Text> : null}
       </View>
-      {playing && !summary.running ? <Text style={ui.muted}>Clock stopped</Text> : null}
-      {summary.centrePass ? <Text style={ui.muted}>Centre pass: {summary.names[summary.centrePass]}</Text> : null}
-    </View>
-  );
-}
-
-function Side({ name, score, big }: { name: string; score: number; big: boolean }) {
-  return (
-    <View style={styles.side1}>
-      <Text style={styles.team} numberOfLines={1}>
-        {name}
-      </Text>
-      <Text style={[styles.score, big && styles.scoreBig]}>{score}</Text>
-    </View>
-  );
-}
-
-function Quarters({ summary }: { summary: ScoreSummary }) {
-  return (
-    <View style={styles.table}>
-      <View style={styles.tr}>
-        <Text style={[styles.th, styles.qCol]}>Quarter</Text>
-        <Text style={[styles.th, styles.num]} numberOfLines={1}>
-          {summary.names.us}
-        </Text>
-        <Text style={[styles.th, styles.num]} numberOfLines={1}>
-          {summary.names.them}
-        </Text>
-      </View>
-      {summary.quarters.map((q) => (
-        <View key={q.period} style={styles.tr}>
-          <Text style={[styles.td, styles.qCol]}>Q{q.period}</Text>
-          <Text style={[styles.td, styles.num]}>{q.us}</Text>
-          <Text style={[styles.td, styles.num]}>{q.them}</Text>
-        </View>
-      ))}
+      {summary.quarters.length > 0 ? (
+        <Text style={styles.quarters}>{summary.quarters.map((q) => `Q${q.period} ${q.us}–${q.them}`).join('   ')}</Text>
+      ) : null}
     </View>
   );
 }
@@ -162,28 +170,23 @@ const styles = StyleSheet.create({
   chipText: { color: colors.text, fontSize: 14, fontWeight: '600' },
   banner: { marginHorizontal: 12, marginTop: 8, padding: 12, borderRadius: 10, backgroundColor: colors.attention },
   bannerText: { color: '#000000', fontSize: 15, fontWeight: '700' },
-  body: { padding: 16, gap: 24 },
-  bodyWide: { flexDirection: 'row', alignItems: 'flex-start' },
-  main: { gap: 16 },
-  mainWide: { flex: 3 },
-  side: {},
-  sideWide: { flex: 2 },
-  scoreBlock: { alignItems: 'center', gap: 6, paddingVertical: 12 },
-  scoreRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 12, width: '100%' },
-  side1: { flex: 1, alignItems: 'center' },
-  team: { color: colors.textMuted, fontSize: 18, fontWeight: '700' },
-  score: { color: colors.text, fontSize: 72, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  scoreBig: { fontSize: 104 },
-  dash: { color: colors.textMuted, fontSize: 48, paddingBottom: 14 },
-  dashBig: { fontSize: 64, paddingBottom: 22 },
-  clockRow: { flexDirection: 'row', alignItems: 'baseline', gap: 14 },
-  period: { color: colors.text, fontSize: 26, fontWeight: '800' },
-  clock: { color: colors.text, fontSize: 34, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  body: { padding: 16, paddingTop: 8, gap: 12 },
+  grid: { gap: 4 },
+  gridWide: { flexDirection: 'row', alignItems: 'flex-start', gap: 20 },
+  col: { gap: 4 },
+  colWide: { flex: 1, minWidth: 0 },
+  heading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 12, marginBottom: 6, gap: 8 },
+  headingLeft: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
+  headingRight: { color: colors.textMuted, fontSize: 13 },
+  scoreBlock: { alignItems: 'center', gap: 4, paddingVertical: 4 },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, width: '100%' },
+  team: { flex: 1, color: colors.textMuted, fontSize: 17, fontWeight: '700', textAlign: 'right' },
+  teamRight: { textAlign: 'left' },
+  score: { color: colors.text, fontSize: 48, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  dash: { color: colors.textMuted, fontWeight: '400' },
+  clockRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  period: { color: colors.text, fontSize: 20, fontWeight: '800' },
+  clock: { color: colors.text, fontSize: 24, fontWeight: '700', fontVariant: ['tabular-nums'] },
   clockStopped: { color: colors.textMuted },
-  table: { borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceLine, padding: 12, gap: 4 },
-  tr: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
-  th: { color: colors.textMuted, fontSize: 14, fontWeight: '700' },
-  td: { color: colors.text, fontSize: 20, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  qCol: { flex: 1.2 },
-  num: { flex: 1, textAlign: 'right' },
+  quarters: { color: colors.textMuted, fontSize: 14, fontVariant: ['tabular-nums'] },
 });

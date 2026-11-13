@@ -43,7 +43,12 @@ export const CAUSES_LOST = ['Bad pass', 'Bad hands', 'Held ball', 'Offside', 'Fo
 export const CAUSES_WON = ['Intercept', 'Deflection, gain', 'Block', 'Pickup', 'Rebound'] as const;
 export type Cause = (typeof CAUSES_LOST)[number] | (typeof CAUSES_WON)[number];
 
-/** Who got the ball after a missed shot. */
+/**
+ * Who got the ball after a missed shot, from the shooting team's side:
+ * 'ours' is an offensive rebound (OREB, the shooters get their own miss back),
+ * 'theirs' a defensive rebound (DREB, the other team collects it), 'out' went
+ * out of court. The same for either team's shots (Matt, 2026-11-13).
+ */
 export type Rebound = 'ours' | 'theirs' | 'out';
 
 /** Set once at game setup; everything else is derived from events. */
