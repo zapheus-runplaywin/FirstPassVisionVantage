@@ -40,6 +40,21 @@ What the Live screen shows, from `src/stats/`:
   holding. Each card says what it is measured from, such as "since our GA
   change". Stars and dismissals are kept on the device for that game
   (`src/live/useCardPrefs.ts`); a dismissal lasts for the quarter.
+- `changes.ts` gives each lineup change, by either team, a verdict for the
+  Changes tab. It compares the last 8 possessions before the change with
+  every one since, using that team's scoring for an attacking or centre-court
+  change and the other team's for GK, GD or WD. It needs 8 on each side and
+  a 20-point move. A change that has helped or hurt also raises a "You can
+  act" card, which retires after five minutes of game time.
+- `court.ts` feeds the Court tab: where a team loses it, where it wins it, and
+  its shots by sector (left, centre or right, close or long, as the engine's
+  zones name them), for the whole game or one quarter.
+- `markers.ts` also pairs our seven with the players they line up on for the
+  On court tab, with when each came on.
+- `breakview.ts` makes the break view's "Say this" points. The break view
+  opens by itself at each quarter break and at full time. It ranks the
+  quarter's cards first, one per subject, and tops them up with the quarter
+  figures furthest from the game figure.
 
 What the database lets Vision do is tested in FirstPassHQ,
 `supabase/tests/vision-coach-view.sql`.

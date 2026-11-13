@@ -1,6 +1,7 @@
 import { POSITIONS, type Position } from '@firstpass/schema';
 import { shotsOf, type GameModel } from './possessions';
 import { MIN_SHOTS, TREND_GAP } from './tiles';
+import { formatClock } from '../live/summary';
 
 /*
  * Hot and cold on the on-court strip, as in the prototype. Both compare this
@@ -58,4 +59,31 @@ export function lossesThisQuarter(model: GameModel) {
   return model.possessions
     .filter((p) => p.team === 'us' && p.period === model.period && p.loss)
     .map((p) => ({ forced: p.loss!.forced, at: p.loss!.at }));
+}
+
+/** The position each of ours lines up against. */
+export const OPPOSITE: Record<Position, Position> = { GS: 'GK', GA: 'GD', WA: 'WD', C: 'C', WD: 'WA', GD: 'GA', GK: 'GS' };
+
+export interface MatchUp {
+  ours: OnCourt & { since: string };
+  theirs: { position: Position; name: string | null; since: string };
+}
+
+/** When a player last came on at a position: "Q3 04:10", or "start" if they began there. */
+function since(model: GameModel, team: 'us' | 'them', position: Position, name: string | null): string {
+  if (!name) return '';
+  const c = [...model.changes].reverse().find((x) => x.team === team && x.position === position && x.on === name);
+  return c ? `on since Q${c.period} ${formatClock(c.clockMs)}` : 'since the start';
+}
+
+/** The On court tab: our seven against the players they line up on. */
+export function matchUps(model: GameModel): MatchUp[] {
+  return onCourt(model).map((p) => {
+    const position = OPPOSITE[p.position];
+    const name = model.theirLineup[position] ?? null;
+    return {
+      ours: { ...p, since: since(model, 'us', p.position, p.name) },
+      theirs: { position, name, since: since(model, 'them', position, name) },
+    };
+  });
 }

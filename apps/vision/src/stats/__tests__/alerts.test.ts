@@ -1,8 +1,9 @@
 import type { GameEvent } from '@firstpass/schema';
 import { describe, expect, it } from 'vitest';
 import { stream } from '../../live/__tests__/fixtures';
-import { candidates, GAP, MAX_LIVE, rank, runAlerts, visibleLive } from '../alerts';
+import { candidates, CHANGE_TTL_MS, GAP, MAX_LIVE, rank, runAlerts, visibleLive } from '../alerts';
 import { buildModel } from '../possessions';
+import { rally, US } from './rally';
 
 const lineup = { GS: 'Priya', GA: 'Jade', WA: 'Kim', C: 'Tess', WD: 'Lily', GD: 'Sam', GK: 'Ruby' };
 
@@ -130,5 +131,32 @@ describe('runAlerts', () => {
 
   it('is empty for an empty game', () => {
     expect(runAlerts([])).toEqual({ live: [], log: [] });
+  });
+});
+
+describe('change verdict cards', () => {
+  const ourGA = { before: 16, team: 'us' as const, lineup: { ...US, GA: 'Mia' } };
+
+  it('raises an act card when a change has helped, with the before and after', () => {
+    const c = candidates(buildModel(rally('xxxxxxgg' + 'gggggggx', 'g'.repeat(16), { changes: [ourGA] })));
+    expect(c.find((x) => x.subject.startsWith('change:'))).toMatchObject({
+      subject: 'change:us:GA:16',
+      kind: 'act',
+      headline: 'Our GA change is helping us',
+      count: 'our scoring 2 of 8 (25%) before, 7 of 8 (88%) after',
+      anchor: 'Mia on for Jade, Q1 07:13',
+      ttlMs: CHANGE_TTL_MS,
+    });
+  });
+
+  it('retires it after five minutes of game time and does not raise it again', () => {
+    // 5 s between possessions, so the verdict holds for well over five minutes.
+    const ev = rally('xxxxxxgg' + 'g'.repeat(40), 'g'.repeat(48), { changes: [ourGA], stepMs: 5_000 });
+    const { live, log } = runAlerts(ev);
+    const cards = log.filter((c) => c.subject === 'change:us:GA:16');
+    expect(cards).toHaveLength(1);
+    expect(cards[0]!.retiredWhen).not.toBeNull();
+    expect(live.some((c) => c.subject === 'change:us:GA:16')).toBe(false);
+    expect(candidates(buildModel(ev)).some((c) => c.subject === 'change:us:GA:16')).toBe(true);
   });
 });
