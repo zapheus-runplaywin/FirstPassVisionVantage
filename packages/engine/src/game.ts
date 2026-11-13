@@ -33,6 +33,10 @@ export interface GameState {
   possession: Team | null;
   chain: { team: Team; from: ChainStart } | null;
   shotsByPosition: Partial<Record<Position, { attempts: number; goals: number }>>;
+  /** Rebounds by the team that got the ball: offensive (own miss back) or defensive. */
+  rebounds: Record<Team, { offensive: number; defensive: number }>;
+  /** Our rebounds by the player who took them, when the second tap named them. */
+  reboundsByPlayer: Record<string, { offensive: number; defensive: number }>;
   /** Our shots by the player who was in that position when the shot was taken. */
   shotsByPlayer: Record<string, { attempts: number; goals: number; positions: Position[] }>;
   centrePass: Record<Team, { received: number; goals: number }>;
@@ -58,6 +62,8 @@ export function initialState(config: GameConfig): GameState {
     chain: null,
     shotsByPosition: {},
     shotsByPlayer: {},
+    rebounds: { us: { offensive: 0, defensive: 0 }, them: { offensive: 0, defensive: 0 } },
+    reboundsByPlayer: {},
     centrePass: { us: { received: 0, goals: 0 }, them: { received: 0, goals: 0 } },
     gains: 0,
     unforced: 0,
@@ -144,6 +150,13 @@ function applyAction(state: GameState, a: ActionPayload): void {
         }
         q.shots++;
         if (goal) q.goals++;
+      }
+      if (!goal && (a.rebound === 'ours' || a.rebound === 'theirs')) {
+        const kind = a.rebound === 'ours' ? 'offensive' : 'defensive';
+        const by = a.rebound === 'ours' ? team : opponent;
+        state.rebounds[by][kind]++;
+        const name = by === 'us' && a.rebounder && a.rebounder !== '?' ? state.lineup?.[a.rebounder] : undefined;
+        if (name) (state.reboundsByPlayer[name] ??= { offensive: 0, defensive: 0 })[kind]++;
       }
       if (goal) {
         state.score[team]++;

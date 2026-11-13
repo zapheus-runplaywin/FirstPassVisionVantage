@@ -1,4 +1,5 @@
 import type { GameEvent } from '@firstpass/schema';
+import { weRebounded } from './rebound';
 
 export type LiveEvent = Exclude<GameEvent, { type: 'correction' }>;
 
@@ -24,6 +25,8 @@ export function liveEvents(events: readonly GameEvent[]): LiveEvent[] {
       const payload = { ...event.payload, ...patch };
       // The opposition is recorded at team level only.
       if (payload.team === 'them') payload.player = null;
+      // A rebounder only stands while the miss is one we got back.
+      if (payload.rebounder && (payload.action !== 'Miss' || !weRebounded(payload.rebound, payload.team))) payload.rebounder = null;
       live.push({ ...event, payload });
     } else {
       live.push(event);

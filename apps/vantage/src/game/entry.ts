@@ -12,7 +12,9 @@ export interface Pending {
   action: Action | null;
   cause?: Cause;
   rebound?: Rebound;
-  stage: 'who' | 'what' | 'cause' | 'rebound';
+  /** Our player who took the rebound, from the second tap after OREB or DREB. */
+  rebounder?: PlayerRef;
+  stage: 'who' | 'what' | 'cause' | 'rebound' | 'rebounder';
 }
 
 export const emptyPending = (): Pending => ({ at: null, zone: null, screen: null, team: null, player: null, action: null, stage: 'who' });

@@ -11,6 +11,11 @@ export const NET_POINTS = {
   deflectionWithGain: 8,
   pickup: 8,
   defensiveRebound: 6,
+  /**
+   * Our own miss won back. Not in the published table, so 0 until Matt
+   * decides; clubs can set it with an override.
+   */
+  offensiveRebound: 0,
   deflectionNoGain: 4,
   goal: 2,
   feedWithGoalAssist: 2,
@@ -130,8 +135,10 @@ export function netPoints(events: readonly GameEvent[], overrides: Partial<NetPo
         // A missed goal turnover is scored on top of the miss itself.
         if (!goal && a.rebound === 'theirs') {
           credit(team, player, v.missedGoalTurnover);
-          credit(opponent, null, v.defensiveRebound);
+          // Our defensive rebound goes to the player who took it, when the second tap named them.
+          credit(opponent, opponent === 'us' ? (a.rebounder ?? null) : null, v.defensiveRebound);
         }
+        if (!goal && a.rebound === 'ours') credit(team, team === 'us' ? (a.rebounder ?? null) : null, v.offensiveRebound);
         break;
       }
 

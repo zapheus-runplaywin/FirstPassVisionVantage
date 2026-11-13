@@ -1,4 +1,4 @@
-import { legalPositions, reboundKind, reboundLabel, reboundTeam, type GameState, type LiveEvent } from '@firstpass/engine';
+import { legalPositions, reboundKind, reboundLabel, rebounderChoices, reboundTeam, type GameState, type LiveEvent } from '@firstpass/engine';
 import { CAUSES_LOST, CAUSES_WON, POSITIONS, type Action, type Cause, type EntryMode, type PlayerRef, type Rebound, type Team } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -59,6 +59,8 @@ export function WhatPanel({
   onAction,
   onCause,
   onRebound,
+  onRebounder,
+  lineup,
   onSkip,
 }: {
   pending: Pending | null;
@@ -70,6 +72,9 @@ export function WhatPanel({
   onAction: (a: Action) => void;
   onCause: (c: Cause) => void;
   onRebound: (r: Rebound) => void;
+  onRebounder: (p: PlayerRef) => void;
+  /** Our lineup now, to name the rebounder buttons. */
+  lineup: Partial<Record<string, string>>;
   onSkip: () => void;
 }) {
   if (pending?.stage === 'cause') {
@@ -79,6 +84,30 @@ export function WhatPanel({
         <View style={st.grid}>
           {causes.map((c) => (
             <Btn key={c} label={c} onPress={() => onCause(c)} style={st.cell} />
+          ))}
+        </View>
+        <Btn label="Skip, fill at the break" tone="quiet" onPress={onSkip} />
+      </Panel>
+    );
+  }
+  if (pending?.stage === 'rebounder' && pending.rebound) {
+    const kind = reboundKind(pending.rebound);
+    const others = POSITIONS.filter((p) => !rebounderChoices(pending.rebound, pending.team ?? 'us').includes(p));
+    return (
+      <Panel title="What" hint={`${kind} ${names.us}: who took it? (optional)`} style={st.prompt}>
+        <View style={st.grid}>
+          {rebounderChoices(pending.rebound, pending.team ?? 'us').map((p) => (
+            <Btn key={p} label={`${kind} ${p}`} big onPress={() => onRebounder(p)} style={st.half}>
+              <Text style={st.rebKind}>{p}</Text>
+              <Text style={st.rebTeam} numberOfLines={1}>
+                {shortName(lineup[p]) || kind}
+              </Text>
+            </Btn>
+          ))}
+        </View>
+        <View style={st.grid}>
+          {[...others, '?' as const].map((p) => (
+            <Btn key={p} label={p} onPress={() => onRebounder(p)} style={st.small} />
           ))}
         </View>
         <Btn label="Skip, fill at the break" tone="quiet" onPress={onSkip} />
@@ -181,6 +210,8 @@ export const st = StyleSheet.create({
   opp: { minHeight: 52, borderWidth: 2, borderColor: colors.opposition },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cell: { width: '30%', flexGrow: 1 },
+  half: { width: '45%', flexGrow: 1 },
+  small: { minWidth: 52, flexGrow: 1, minHeight: 48 },
   themLit: { borderWidth: 2, borderColor: colors.opposition },
   prompt: { borderColor: colors.attention, borderWidth: 1.5 },
   ribbon: {},

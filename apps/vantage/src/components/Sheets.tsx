@@ -1,4 +1,4 @@
-import { courtTime, gameFile, gameFileName, netPoints, reboundLabel, timingRows, timingTable, type GameState, type LiveEvent } from '@firstpass/engine';
+import { courtTime, gameFile, gameFileName, netPoints, reboundLabel, weRebounded, timingRows, timingTable, type GameState, type LiveEvent } from '@firstpass/engine';
 import {
   ACTIONS,
   CAUSES_LOST,
@@ -43,7 +43,7 @@ function Choice<T extends string>({ items, value, label, onPick }: { items: read
   );
 }
 
-type Draft = Pick<ActionPayload, 'team' | 'player' | 'action' | 'cause' | 'rebound'>;
+type Draft = Pick<ActionPayload, 'team' | 'player' | 'action' | 'cause' | 'rebound' | 'rebounder'>;
 
 export function EditSheet({
   event,
@@ -62,7 +62,7 @@ export function EditSheet({
 }) {
   const original = event.type === 'action' ? event.payload : null;
   const [draft, setDraft] = useState<Draft | null>(
-    original ? { team: original.team, player: original.player, action: original.action, cause: original.cause ?? null, rebound: original.rebound ?? null } : null,
+    original ? { team: original.team, player: original.player, action: original.action, cause: original.cause ?? null, rebound: original.rebound ?? null, rebounder: original.rebounder ?? null } : null,
   );
   const remove = () => {
     onCorrect({ target: event.id, op: 'delete' });
@@ -83,8 +83,9 @@ export function EditSheet({
     const next: Draft = { ...draft, player: draft.team === 'them' ? null : draft.player };
     if (!causes.length) next.cause = null;
     if (next.action !== 'Miss') next.rebound = null;
+    if (!weRebounded(next.rebound, next.team)) next.rebounder = null;
     const patch: CorrectionPayload['patch'] = {};
-    for (const k of ['team', 'player', 'action', 'cause', 'rebound'] as const) {
+    for (const k of ['team', 'player', 'action', 'cause', 'rebound', 'rebounder'] as const) {
       if ((next[k] ?? null) !== (original[k] ?? null)) Object.assign(patch, { [k]: next[k] });
     }
     if (Object.keys(patch).length) onCorrect({ target: event.id, op: 'edit', patch });
@@ -119,6 +120,17 @@ export function EditSheet({
             label={(r) => reboundLabel(r, draft.team, { us: config.us, them: config.them })}
             onPick={(rebound) => set({ rebound })}
           />
+          {weRebounded(draft.rebound, draft.team) ? (
+            <>
+              <Text style={sh.label}>Who took the rebound</Text>
+              <Choice
+                items={[...POSITIONS, '?'] as PlayerRef[]}
+                value={draft.rebounder}
+                label={(p) => (p === '?' ? '?' : `${p} ${shortName(lineup[p])}`.trim())}
+                onPick={(rebounder) => set({ rebounder })}
+              />
+            </>
+          ) : null}
         </>
       ) : null}
       <View style={sh.choices}>
@@ -285,6 +297,17 @@ export function StatsSheet({
         rows={Object.entries(onCourt)
           .sort((a, b) => b[1].totalMs - a[1].totalMs)
           .map(([name, t]) => [name, fmtClock(t.byPeriod[state.period] ?? 0), fmtClock(t.totalMs), Object.keys(t.byPosition).join(' ')])}
+      />
+      <Text style={sh.label}>Rebounds</Text>
+      <Table
+        head={['Rebounds', 'OREB', 'DREB']}
+        rows={Object.entries(state.reboundsByPlayer)
+          .sort((a, b) => b[1].offensive + b[1].defensive - (a[1].offensive + a[1].defensive))
+          .map(([name, r]) => [name, String(r.offensive), String(r.defensive)])
+          .concat([
+            [config.us, String(state.rebounds.us.offensive), String(state.rebounds.us.defensive)],
+            [config.them, String(state.rebounds.them.offensive), String(state.rebounds.them.defensive)],
+          ])}
       />
       <Text style={sh.label}>Unforced turnovers by third</Text>
       <Text style={s.text}>

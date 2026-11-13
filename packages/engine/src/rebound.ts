@@ -1,4 +1,4 @@
-import type { Rebound, Team } from '@firstpass/schema';
+import type { Position, Rebound, Team } from '@firstpass/schema';
 
 /*
  * Rebounds are recorded with one tap after a miss (Matt, 2026-11-13): OREB
@@ -16,6 +16,21 @@ export function reboundKind(rebound: Rebound): 'OREB' | 'DREB' | 'Out' {
 export function reboundTeam(rebound: Rebound, shooter: Team): Team | null {
   if (rebound === 'out') return null;
   return rebound === 'ours' ? shooter : shooter === 'us' ? 'them' : 'us';
+}
+
+/**
+ * The positions offered for the second tap, when we got the ball back after a
+ * miss: GS and GA for our offensive rebound, GD and GK for our defensive
+ * rebound on their miss. Empty when the opposition got it or it went out.
+ */
+export function rebounderChoices(rebound: Rebound | null | undefined, shooter: Team): Position[] {
+  if (!rebound || reboundTeam(rebound, shooter) !== 'us') return [];
+  return rebound === 'ours' ? ['GS', 'GA'] : ['GD', 'GK'];
+}
+
+/** True when a rebounder can be recorded: we got the ball after the miss. */
+export function weRebounded(rebound: Rebound | null | undefined, shooter: Team): boolean {
+  return !!rebound && reboundTeam(rebound, shooter) === 'us';
 }
 
 /** One line for lists and edit choices, e.g. "OREB · Thunder", "DREB · Storm" or "Out". */
