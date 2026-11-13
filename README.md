@@ -11,6 +11,7 @@ Live netball stats. **FirstPass Vantage** is the statistician's tablet app for e
 | `packages/engine` | Pure stats engine shared by both apps: fold events into game state |
 | `packages/schema` | Event model shared by the apps and the database |
 | `packages/ui` | Brand colours and shared UI |
+| `packages/playhq` | PlayHQ client and one fixture/line-up model, shared with Studio (published to GitHub Packages) |
 | `supabase` | Database migrations and Edge Functions (from Phase 3) |
 
 `apps/hq` (admin web app) and `packages/config` (Net Points values, thresholds) arrive in later phases.
@@ -27,6 +28,10 @@ pnpm vision           # start the Vision dev server (press w for web)
 ```
 
 Add an Expo package to an app with `pnpm --filter @firstpass/vantage exec expo install <package>` so its version matches the Expo SDK.
+
+## Shared packages for Studio
+
+Packages that other FirstPass repos use are published to GitHub Packages when a merge to main bumps their version (the **Publish packages** workflow). GitHub Packages names them after the repository owner, so `@firstpass/playhq` is published as `@zapheus-runplaywin/playhq` and Studio installs it with an npm alias. See [packages/playhq/README.md](packages/playhq/README.md) and `scripts/publish-packages.mjs`. Vantage and Vision always use the packages from source through the workspace.
 
 ## Test builds
 

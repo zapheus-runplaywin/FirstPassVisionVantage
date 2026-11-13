@@ -1,0 +1,44 @@
+# Publishes the shared @firstpass/* packages (packages/*, those not marked private) to GitHub
+# Packages after a merge to main, so Studio can install released versions. A version already on
+# the registry is skipped, so this only publishes when a pull request bumped a package's version.
+# Uses this repository's own token: no secret to add. See scripts/publish-packages.mjs.
+name: Publish packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "scripts/publish-packages.mjs"
+      - ".github/workflows/publish-packages.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-packages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@${{ github.repository_owner }}"
+      - run: pnpm install --frozen-lockfile
+      - name: Test and build the packages
+        run: pnpm turbo run typecheck test test:dist --filter "./packages/*"
+      - name: Check the packages install as Studio will
+        run: node scripts/publish-packages.mjs --check
+      - name: Publish new versions
+        run: node scripts/publish-packages.mjs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
