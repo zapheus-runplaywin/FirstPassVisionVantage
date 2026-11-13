@@ -1,4 +1,4 @@
-import { netPoints, timingRows, timingTable, type GameState, type LiveEvent } from '@firstpass/engine';
+import { courtTime, netPoints, timingRows, timingTable, type GameState, type LiveEvent } from '@firstpass/engine';
 import {
   ACTIONS,
   CAUSES_LOST,
@@ -17,7 +17,7 @@ import { setStringAsync } from 'expo-clipboard';
 import { useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { shortName } from '../game/useGame';
-import { Btn, s } from './ui';
+import { Btn, fmtClock, s } from './ui';
 
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
@@ -131,13 +131,14 @@ export function EditSheet({
 export function SubsSheet({
   lineup,
   bench,
-  running,
+  when,
   onChange,
   onClose,
 }: {
   lineup: Partial<Record<Position, string>>;
   bench: string[];
-  running: boolean;
+  /** When the change is timed to, in words, e.g. "Q2 6:12" or "the start of Q3". */
+  when: string;
   onChange: (lineup: Partial<Record<Position, string>>, bench: string[], detail: string) => void;
   onClose: () => void;
 }) {
@@ -167,7 +168,7 @@ export function SubsSheet({
   return (
     <Sheet title="Subs" onClose={onClose}>
       <Text style={s.muted}>
-        Tap a position, then a bench player to bring them on, or tap two positions to swap. Timed to {running ? 'the clock now' : 'the start of the next quarter'}.
+        Tap a position, then a bench player to bring them on, or tap two positions to swap. Timed to {when}.
       </Text>
       <Text style={sh.label}>On court</Text>
       <View style={sh.choices}>
@@ -186,10 +187,23 @@ export function SubsSheet({
   );
 }
 
-export function StatsSheet({ state, events, config, onClose }: { state: GameState; events: readonly GameEvent[]; config: GameConfig; onClose: () => void }) {
+export function StatsSheet({
+  state,
+  events,
+  config,
+  remainingMs,
+  onClose,
+}: {
+  state: GameState;
+  events: readonly GameEvent[];
+  config: GameConfig;
+  /** The quarter clock now, while a quarter is being played. */
+  remainingMs?: number;
+  onClose: () => void;
+}) {
   const np = netPoints(events);
   const pct = (g: number, n: number) => (n ? `${Math.round((100 * g) / n)}% (${g}/${n})` : '–');
-  const lineup = state.lineup ?? {};
+  const onCourt = courtTime(events, config.quarterMs, remainingMs);
   return (
     <Sheet title="Game so far" onClose={onClose}>
       <Table
@@ -206,7 +220,16 @@ export function StatsSheet({ state, events, config, onClose }: { state: GameStat
       <Text style={sh.label}>Shooters</Text>
       <Table
         head={['Shooter', 'Goals', '%']}
-        rows={Object.entries(state.shotsByPosition).map(([p, v]) => [`${p} ${shortName(lineup[p as Position])}`, `${v.goals} of ${v.attempts}`, pct(v.goals, v.attempts)])}
+        rows={Object.entries(state.shotsByPlayer)
+          .sort((a, b) => b[1].attempts - a[1].attempts)
+          .map(([name, v]) => [`${name} (${v.positions.join(', ')})`, `${v.goals} of ${v.attempts}`, pct(v.goals, v.attempts)])}
+      />
+      <Text style={sh.label}>Time on court</Text>
+      <Table
+        head={['Player', `Q${state.period}`, 'Game', 'Played at']}
+        rows={Object.entries(onCourt)
+          .sort((a, b) => b[1].totalMs - a[1].totalMs)
+          .map(([name, t]) => [name, fmtClock(t.byPeriod[state.period] ?? 0), fmtClock(t.totalMs), Object.keys(t.byPosition).join(' ')])}
       />
       <Text style={sh.label}>Unforced turnovers by third</Text>
       <Text style={s.text}>
