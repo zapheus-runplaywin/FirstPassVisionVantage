@@ -13,11 +13,22 @@ updates:
       security:
         applies-to: security-updates
         patterns: ["*"]
+      # vitest and its coverage plugin must stay on the same version, or the
+      # coverage run fails ("Expected string coverage payload"), so a major bump
+      # moves them together in one PR.
+      vitest:
+        applies-to: version-updates
+        patterns: ["vitest", "@vitest/*"]
       minor-and-patch:
         applies-to: version-updates
         patterns: ["*"]
         update-types: [minor, patch]
     ignore:
+      # TypeScript 7 is the native (Go) compiler: its package no longer exports the
+      # stable JavaScript compiler API or typescript/bin/tsc (packages/playhq/build.mjs
+      # runs that), and Expo has not moved to it yet. Upgrade by hand once Expo supports it.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
       # Expo pins these to each SDK release. They move together on an SDK upgrade
       # with `npx expo install --fix`, never one at a time, or the app stops
       # matching its SDK (`npx expo-doctor` fails and native builds can break).
