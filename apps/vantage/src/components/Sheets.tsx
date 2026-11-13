@@ -1,4 +1,4 @@
-import { courtTime, netPoints, timingRows, timingTable, type GameState, type LiveEvent } from '@firstpass/engine';
+import { courtTime, gameFile, gameFileName, netPoints, timingRows, timingTable, type GameState, type LiveEvent } from '@firstpass/engine';
 import {
   ACTIONS,
   CAUSES_LOST,
@@ -14,6 +14,8 @@ import {
 } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
 import { setStringAsync } from 'expo-clipboard';
+import { File, Paths } from 'expo-file-system';
+import { isAvailableAsync, shareAsync } from 'expo-sharing';
 import { useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { shortName } from '../game/useGame';
@@ -326,9 +328,29 @@ function Table({ head, rows }: { head: string[]; rows: string[][] }) {
   );
 }
 
-export function ExportSheet({ config, events, onClose }: { config: GameConfig; events: readonly GameEvent[]; onClose: () => void }) {
+/**
+ * Writes the whole game to a JSON file and opens the share sheet, so it can
+ * go to Drive, email or another app: a backup that does not need signal now
+ * or the club's database.
+ */
+async function shareGameFile(gameId: string, config: GameConfig, events: readonly GameEvent[]): Promise<void> {
+  if (!(await isAvailableAsync())) throw new Error('Sharing is not available on this device');
+  const created = events[0] ? new Date(events[0].recordedAt) : new Date();
+  const file = new File(Paths.cache, gameFileName(config, created));
+  if (file.exists) file.delete();
+  file.create();
+  file.write(JSON.stringify(gameFile(gameId, config, events, new Date())));
+  await shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Save or send the game file', UTI: 'public.json' });
+}
+
+export function ExportSheet({ gameId, config, events, onClose }: { gameId: string; config: GameConfig; events: readonly GameEvent[]; onClose: () => void }) {
   const [copied, setCopied] = useState<'log' | 'timing' | null>(null);
-  const json = JSON.stringify({ config, events }, null, 1);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const json = JSON.stringify(gameFile(gameId, config, events, new Date()), null, 1);
+  const share = () => {
+    setShareError(null);
+    shareGameFile(gameId, config, events).catch((e: unknown) => setShareError(e instanceof Error ? e.message : 'Could not share the file'));
+  };
   const corrections = events.filter((e) => e.type === 'correction').length;
   const copy = (what: 'log' | 'timing', text: () => string) => void setStringAsync(text()).then(() => setCopied(what));
   return (
@@ -336,7 +358,10 @@ export function ExportSheet({ config, events, onClose }: { config: GameConfig; e
       <Text style={s.muted}>
         {events.length} events including {corrections} corrections. Everything is kept; nothing is overwritten.
       </Text>
-      <Btn label={copied === 'log' ? 'Copied' : 'Copy to clipboard'} tone="primary" onPress={() => copy('log', () => json)} />
+      <Btn label="Save or send game file" tone="primary" onPress={share} />
+      {shareError ? <Text style={sh.error}>{shareError}. Use Copy to clipboard instead.</Text> : null}
+      <Text style={s.muted}>Sends the whole game as one file to Drive, email or another app: a backup that does not need the club database or signal.</Text>
+      <Btn label={copied === 'log' ? 'Copied' : 'Copy to clipboard'} onPress={() => copy('log', () => json)} />
       <Btn label={copied === 'timing' ? 'Copied' : 'Copy timing table'} onPress={() => copy('timing', () => timingTable(timingRows(config, events), '\t'))} />
       <Text style={s.muted}>
         The timing table pastes into a spreadsheet with one row per event, corrections applied. since_start_s counts from when the clock was first started here, which
@@ -364,5 +389,6 @@ const sh = StyleSheet.create({
   n: { textAlign: 'right' },
   bigClock: { color: colors.text, fontSize: 48, fontWeight: '700', fontVariant: ['tabular-nums'], textAlign: 'center', marginVertical: 8 },
   step: { minWidth: '30%', flexGrow: 1, minHeight: 56 },
+  error: { color: colors.attention, fontSize: 14 },
   mono: { color: colors.text, fontFamily: 'monospace', fontSize: 11 },
 });

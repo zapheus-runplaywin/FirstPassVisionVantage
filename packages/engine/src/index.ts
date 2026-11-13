@@ -28,3 +28,4 @@ export { NET_POINTS, netPoints, type NetPoints, type NetPointsTable } from './ne
 export { TIMING_COLUMNS, timingRows, timingTable, type TimingRow } from './timing';
 export { courtTime, lineupsAt, type CourtTime, type Lineup } from './players';
 export { gameStatus, QUARTERS, type GameStatus } from './status';
+export { gameFile, gameFileName, type GameFile } from './gameFile';
