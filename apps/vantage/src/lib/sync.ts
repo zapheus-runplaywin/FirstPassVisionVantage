@@ -4,13 +4,18 @@ import { useEffect, useState } from 'react';
 import { getGame, getKv, loadUnsent, markSynced, setKv } from './db';
 import { client, clientFor } from './supabase';
 import { findClub } from './clubs';
+import { classify, messageOf } from './errors';
 import { uuidv7 } from './uuid';
 
 /*
  * The outbox. Every event is saved on the device first; this worker sends
  * what the server has not confirmed, in seq order, and clears up to the seq
- * the server reports. Retries back off from 0.5 s to 8 s and restart when
- * the app comes to the foreground. The statistician never waits on it.
+ * the server reports. When the club can't be reached, retries back off from
+ * 0.5 s to 8 s and restart when the app comes to the foreground. When HQ
+ * answers with a refusal (no Statistician role, stood down, game finished)
+ * it stops and shows HQ's reason; the next event or a return to the app
+ * asks once more, in case the role has been given back. The statistician
+ * never waits on it.
  */
 
 export type SyncState =
@@ -20,7 +25,8 @@ export type SyncState =
   | { kind: 'synced' }
   | { kind: 'queued'; count: number }
   | { kind: 'offline'; count: number; since: number }
-  | { kind: 'lease lost' };
+  | { kind: 'lease lost' }
+  | { kind: 'refused'; message: string };
 
 const BATCH = 200;
 const listeners = new Map<string, Set<(s: SyncState) => void>>();
@@ -32,6 +38,11 @@ const running = new Set<string>();
 function publish(gameId: string, state: SyncState): void {
   states.set(gameId, state);
   for (const fn of listeners.get(gameId) ?? []) fn(state);
+}
+
+/** The last state published for a game, if any. */
+export function currentSyncState(gameId: string): SyncState | undefined {
+  return states.get(gameId);
 }
 
 export function deviceId(): string {
@@ -85,8 +96,14 @@ export async function syncGame(gameId: string): Promise<void> {
     delays.delete(gameId);
     publish(gameId, { kind: 'synced' });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = messageOf(err);
     if (/recorder lease/.test(message)) return publish(gameId, { kind: 'lease lost' });
+    const problem = classify(err);
+    if (problem.kind === 'refused') {
+      clearTimeout(timers.get(gameId));
+      delays.delete(gameId);
+      return publish(gameId, problem);
+    }
     const count = loadUnsent(gameId, getGame(gameId)?.ackedSeq ?? 0, 10_000).length;
     const prev = states.get(gameId);
     const since = prev?.kind === 'offline' ? prev.since : Date.now();
@@ -138,5 +155,7 @@ export function syncLabel(s: SyncState): string {
       return Date.now() - s.since > 30_000 ? `Offline · ${s.count} queued` : `${s.count} queued`;
     case 'lease lost':
       return 'Another device has taken over';
+    case 'refused':
+      return `Not sent: ${s.message}`;
   }
 }
