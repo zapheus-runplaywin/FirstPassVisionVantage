@@ -6,8 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Btn, ui } from '../components/ui';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
 import { clubs, type ClubEntry } from '../lib/clubs';
-import { loadGames, pairWithGame, type GameListEntry } from '../lib/games';
-import { normalisePairCode } from '../lib/pairCode';
+import { followGame, loadGames, type GameListEntry } from '../lib/games';
 import { chooseClub, leaveClub, useClub } from '../lib/supabase';
 
 /** Club, then sign-in, then the games this coach can follow. */
@@ -104,7 +103,6 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [opening, setOpening] = useState<string | null>(null);
-  const [code, setCode] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,22 +120,20 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
     void load();
   }, [load]);
 
-  /** Pairs with the game, then opens it. */
-  const follow = async (pairCode: string | null, knownId?: string) => {
-    setOpening(knownId ?? pairCode);
+  /** Follows the game by its id, then opens it. */
+  const open = async (gameId: string) => {
+    setOpening(gameId);
     setError(null);
     try {
-      const id = pairCode ? await pairWithGame(pairCode) : (knownId ?? null);
+      const id = await followGame(gameId);
       if (id) router.push({ pathname: '/game/[id]', params: { id } });
-      else setError(pairCode && !knownId ? 'That code is not for a game you can see, or it has expired.' : 'Could not follow that game.');
+      else setError("This game isn't one you can see any more. Pull down to refresh the list.");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setOpening(null);
     }
   };
-
-  const typed = normalisePairCode(code);
 
   return (
     <View style={styles.games}>
@@ -153,7 +149,7 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
         ListEmptyComponent={
           games ? (
             <Text style={ui.muted}>
-              No games for your teams in the last few days. When your statistician starts one in Vantage it shows here, or enter its pair code below.
+              No games for your teams in the last few days. When your statistician starts one in Vantage it shows here.
             </Text>
           ) : null
         }
@@ -161,7 +157,7 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${item.config.us} v ${item.config.them}, ${STATUS_LABEL[item.status]}`}
-            onPress={() => follow(item.pairCode, item.id)}
+            onPress={() => open(item.id)}
             disabled={!!opening}
             style={({ pressed }) => [styles.game, pressed && ui.pressed]}
           >
@@ -184,19 +180,6 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
         )}
         contentContainerStyle={styles.list}
       />
-      <View style={styles.codeRow}>
-        <TextInput
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          maxLength={7}
-          placeholder="Pair code"
-          placeholderTextColor={colors.textMuted}
-          style={[ui.input, styles.codeInput]}
-          accessibilityLabel="Pair code from the statistician's tablet"
-        />
-        <Btn label="Follow" onPress={() => typed && follow(typed)} disabled={!typed || !!opening} style={styles.small} />
-      </View>
       <View style={styles.row}>
         <Text style={[ui.muted, styles.grow]} numberOfLines={1}>
           {club.name}
@@ -215,9 +198,7 @@ const styles = StyleSheet.create({
   form: { gap: 14 },
   games: { flex: 1, gap: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  codeRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   grow: { flex: 1 },
-  codeInput: { flex: 1, minWidth: 0, width: 0 },
   small: { minHeight: 44 },
   list: { gap: 10, paddingBottom: 8 },
   game: {

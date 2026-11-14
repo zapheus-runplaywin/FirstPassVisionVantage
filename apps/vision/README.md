@@ -6,9 +6,9 @@ follows it live.
 
 How it gets the game:
 
-- `src/lib/games.ts` lists recent games the member may see, pairs with the
-  chosen game (`pair_game`, using the game's code) and reads its primary
-  stream from `game_events` in pages.
+- `src/lib/games.ts` lists recent games the member may see, follows the
+  chosen game by its id (`follow_game`, no pair code, so finished games open
+  too) and reads its primary stream from `game_events` in pages.
 - `src/live/feed.ts` keeps the game up to date: the private Realtime topic
   `game:<id>` is the fast path; reads fill any gap, check every 5 s while
   live updates are down, and every 30 s regardless.
