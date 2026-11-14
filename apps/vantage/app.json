@@ -36,6 +36,16 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "clubs": [
+        {
+          "code": "THUNDER",
+          "name": "West Coast Thunder",
+          "supabaseUrl": "https://gfadnwpxyartrfkrhhlr.supabase.co",
+          "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYWRud3B4eWFydHJma3JoaGxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNTkyNzEsImV4cCI6MjEwNzYzNTI3MX0.dInH_yUCZymzXpW-uFwyM1hrbkZaV1fWufKO6P9ME4E"
+        }
+      ]
     }
   }
 }
