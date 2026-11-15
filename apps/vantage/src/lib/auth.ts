@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { makeRedirectUri } from 'expo-auth-session';
 import { openAuthSessionAsync } from 'expo-web-browser';
 import { useEffect, useState } from 'react';
+import { classify } from './errors';
 import { client, useClub } from './supabase';
 
 /** Google sign-in through the club's Supabase Auth, in the system browser, back to the app by its scheme. */
@@ -63,15 +64,40 @@ export interface Athlete {
   name: string;
 }
 
+/** Whether the signed-in member may record, and if not, why not. */
+export type RecorderCheck =
+  | { kind: 'recorder'; teams: TeamEntry[] }
+  /** HQ answered: this member has no Statistician (or Admin) role. */
+  | { kind: 'no role' }
+  /** No answer from the club, so we don't know yet. */
+  | { kind: 'unreachable' }
+  /** HQ refused the check itself, in its own words. */
+  | { kind: 'refused'; message: string };
+
 /** What the signed-in member may record: nothing unless they are a statistician or admin. */
-export async function loadRecorder(): Promise<{ canRecord: boolean; teams: TeamEntry[] }> {
+export async function loadRecorder(): Promise<RecorderCheck> {
   const supabase = client();
-  if (!supabase) return { canRecord: false, teams: [] };
+  if (!supabase) return { kind: 'no role' };
   const allowed = await supabase.rpc('is_statistician');
-  if (allowed.error || allowed.data !== true) return { canRecord: false, teams: [] };
+  if (allowed.error) return classify(allowed.error);
+  if (allowed.data !== true) return { kind: 'no role' };
   const teams = await supabase.from('teams').select('id, name').eq('archived', false).order('season', { ascending: false }).order('sort_order');
-  if (teams.error) throw teams.error;
-  return { canRecord: true, teams: (teams.data ?? []) as TeamEntry[] };
+  if (teams.error) return classify(teams.error);
+  return { kind: 'recorder', teams: (teams.data ?? []) as TeamEntry[] };
+}
+
+/** What the setup screen says about recording for the club, or null when all is well. */
+export function recorderMessage(check: RecorderCheck): string | null {
+  switch (check.kind) {
+    case 'recorder':
+      return null;
+    case 'no role':
+      return 'Your club has not given you the Statistician role yet, so this game stays on the tablet.';
+    case 'unreachable':
+      return "Couldn't reach your club to check your role. Check the tablet's connection and try again. You can still record on the tablet.";
+    case 'refused':
+      return `Your club refused: ${check.message.replace(/[.\s]+$/, '')}. This game stays on the tablet.`;
+  }
 }
 
 /** The team's PlayHQ games from yesterday on, soonest first. */

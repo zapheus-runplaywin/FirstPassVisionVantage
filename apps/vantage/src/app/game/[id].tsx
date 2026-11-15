@@ -246,8 +246,10 @@ function Entry({ game }: { game: Game }) {
         ) : null}
         <View style={{ flex: 1 }} />
         {pairCode ? <Pill label="Pair code" value={`${pairCode.slice(0, 3)} ${pairCode.slice(3)}`} /> : null}
-        {!compact || sync.kind === 'lease lost' || sync.kind === 'offline' ? (
-          <Text style={[s.muted, sync.kind === 'lease lost' && styles.warnText]}>{syncLabel(sync)}</Text>
+        {!compact || sync.kind === 'lease lost' || sync.kind === 'refused' || sync.kind === 'offline' ? (
+          <Text numberOfLines={2} style={[s.muted, styles.syncText, (sync.kind === 'lease lost' || sync.kind === 'refused') && styles.warnText]}>
+            {syncLabel(sync)}
+          </Text>
         ) : null}
         <Btn label="Stats" onPress={() => setSheet({ kind: 'stats' })} style={styles.topBtn} />
         <Btn label={compact ? 'End Q' : 'End quarter'} tone={timeUp ? 'primary' : 'target'} onPress={endQuarter} style={styles.topBtn} />
@@ -454,6 +456,7 @@ const styles = StyleSheet.create({
   clock: { color: colors.text, fontSize: 28, fontWeight: '700', fontVariant: ['tabular-nums'], minWidth: 84, textAlign: 'center' },
   clockCompact: { fontSize: 22, minWidth: 64 },
   warnText: { color: colors.attention, fontWeight: '700' },
+  syncText: { flexShrink: 1, maxWidth: 320 },
   clockBtn: { borderRadius: 8, borderWidth: 1, borderColor: colors.surfaceLine, paddingHorizontal: 6, minHeight: 44, justifyContent: 'center' },
   clockUp: { color: colors.attention },
   topBtn: { minHeight: 44 },
