@@ -2,6 +2,8 @@ This is the FirstPass monorepo (pnpm workspaces + Turborepo): two Expo apps in `
 
 The apps are Expo/React Native. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
+Building a new FirstPass app, or changing how sign-in, club lookup or access works across products? Follow the conventions guideline in the FirstPassHQ repo: [`docs/new-app-conventions.md`](https://github.com/zapheus-runplaywin/FirstPassHQ/blob/main/docs/new-app-conventions.md).
+
 ## Expo has changed — do not trust your training data
 
 Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
