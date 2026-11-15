@@ -6,7 +6,7 @@ import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Btn, s, Seg } from '../components/ui';
 import { startNewGame } from '../game/newGame';
-import { loadAthletes, loadFixtures, loadRecorder, useSession, type FixtureEntry, type TeamEntry } from '../lib/auth';
+import { loadAthletes, loadFixtures, loadRecorder, recorderMessage, useSession, type FixtureEntry, type RecorderCheck, type TeamEntry } from '../lib/auth';
 import { useClub } from '../lib/supabase';
 
 const EXAMPLE: Record<Position, string> = { GS: '7 Priya', GA: '9 Jade', WA: '5 Kim', C: '4 Tess', WD: '6 Lily', GD: '3 Sam', GK: '1 Ruby' };
@@ -26,8 +26,10 @@ export default function Setup() {
   const [teamId, setTeamId] = useState<string | null>(null);
   const [fixtures, setFixtures] = useState<FixtureEntry[]>([]);
   const [fixtureId, setFixtureId] = useState<string | null>(null);
-  const [recordError, setRecordError] = useState<string | null>(null);
+  const [check, setCheck] = useState<RecorderCheck | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    setCheck(null);
     if (!session || !club) {
       setTeams([]);
       setTeamId(null);
@@ -35,12 +37,13 @@ export default function Setup() {
     }
     loadRecorder().then(
       (r) => {
-        setTeams(r.teams);
-        setRecordError(r.canRecord ? null : 'Your club has not given you the Statistician role yet, so this game stays on the tablet.');
+        setTeams(r.kind === 'recorder' ? r.teams : []);
+        setCheck(r);
       },
-      (e: unknown) => setRecordError(e instanceof Error ? e.message : 'Could not load your teams'),
+      () => setCheck({ kind: 'unreachable' }),
     );
-  }, [session, club]);
+  }, [session, club, attempt]);
+  const recordError = check ? recorderMessage(check) : null;
   // Picking a team offers its upcoming PlayHQ games and fills the lineup from its athletes.
   useEffect(() => {
     setFixtures([]);
@@ -94,6 +97,9 @@ export default function Setup() {
           <Field label="Quarter length (minutes)" value={minutes} onChange={setMinutes} numeric />
         </View>
         {recordError ? <Text style={styles.error}>{recordError}</Text> : null}
+        {check && check.kind !== 'recorder' && check.kind !== 'no role' ? (
+          <Btn label="Try again" tone="quiet" onPress={() => setAttempt((n) => n + 1)} />
+        ) : null}
         {session && club && teams.length ? (
           <>
             <Text style={s.h2}>Record for {club.name}</Text>
