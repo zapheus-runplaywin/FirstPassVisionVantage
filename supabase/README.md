@@ -11,7 +11,8 @@ What the apps call, in order:
 - `game_lineup(p_team_id)` this season's athletes in a squad or team.
 - `create_game(p_id, p_config, p_device_id, p_team_id, p_fixture_id)` makes the game and takes the recorder lease; returns the row with its `pair_code`.
 - `append_game_events(p_game_id, p_stream, p_events)` appends a batch and returns the highest unbroken `seq`.
-- `pair_game(p_code, p_as_shadow)` pairs a coach (Vision) or shadow statistician with a live game.
+- `follow_game(p_game_id)` lets a coach or manager (Vision) follow any game they may see, by its id.
+- `pair_game(p_code, p_as_shadow)` pairs a shadow statistician with a live game by its code.
 - `save_game_snapshot(p_game_id, p_through_seq, p_engine_version, p_state)` at each break.
 - Realtime topic `game:<id>` carries primary events to paired members.
 
