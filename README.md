@@ -8,6 +8,7 @@ Live netball stats. **FirstPass Vantage** is the statistician's tablet app for e
 | --- | --- |
 | `apps/vantage` | Expo tablet app for the statistician (Android first, then iPad), landscape |
 | `apps/vision` | Expo app for coaches: phone, tablet and web, portrait and landscape |
+| `apps/site` | FirstPass HQ's public pages for the app stores (privacy policy, support, delete my account), a static site on Expo Hosting |
 | `packages/engine` | Pure stats engine shared by both apps and published to npm: fold events into game state |
 | `packages/schema` | Event model shared by the apps and the database, published to npm |
 | `packages/ui` | Brand colours and shared UI |
@@ -72,3 +73,11 @@ npx eas-cli build --profile preview --platform android
 - [Vantage UI](https://claude.ai/code/artifact/3549aa2e-b657-4996-a019-a8abe8f8c632)
 - [Vision UI](https://claude.ai/code/artifact/a1453da0-971a-4205-966a-3b75187bffea)
 - [System design](https://claude.ai/code/artifact/2dc70ba4-1bb4-43a9-a2e2-aa9a59f7bda5)
+
+## Public pages
+
+The app stores need a public privacy policy, a support page and a page that tells people how to delete their account. They live in `apps/site`, a static site with no JavaScript, published to Expo Hosting's free plan at **https://firstpass-hq.expo.app** (`/privacy`, `/support`, `/delete-account`).
+
+- The words are written once, in the FirstPass HQ repo's `docs/store/public-pages/`, next to the store answers they must agree with. `scripts/sync-public-pages.sh [path to a FirstPassHQ checkout]` copies them into `apps/site/content/` verbatim, notes the HQ commit in `content/SOURCE.md` and builds the site to check it. Don't edit the copies here.
+- `pnpm --filter @firstpass/site build` writes `apps/site/dist` for a look in a browser. Tests check every page renders, runs no script and loads nothing from another site.
+- To publish: **Actions → Deploy web → Run workflow**, site `site`. It tests and builds first, and refuses while any page still holds placeholder text. It needs the same `EXPO_TOKEN` secret as the builds. The first run creates the Expo project and fixes the address for good (Expo never releases a subdomain).

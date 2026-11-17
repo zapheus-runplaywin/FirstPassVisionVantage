@@ -1,0 +1,64 @@
+name: Deploy web
+
+# Publish a web site to Expo Hosting (free plan, an expo.app address).
+# Runs only when someone presses "Run workflow". Needs the repository secret
+# EXPO_TOKEN, the same one the EAS build workflow uses.
+#
+# site: FirstPass HQ's public pages (privacy policy, support, delete my
+#   account) from apps/site. Refuses to publish while any page still holds
+#   placeholder text.
+#
+# The first run fixes the address for good: Expo reserves a subdomain even
+# after a project is deleted. There are no preview addresses, so only the
+# production address is ever handed out.
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Site to publish
+        type: choice
+        options: [site]
+        default: site
+
+concurrency:
+  group: deploy-web-${{ inputs.app }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Test and build the public pages
+        if: inputs.app == 'site'
+        working-directory: apps/site
+        run: |
+          pnpm test
+          pnpm build:publish
+      - uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Link the site to its Expo project
+        working-directory: apps/${{ inputs.app }}
+        # Creates the Expo project on the first run and links to it after that.
+        run: eas init --non-interactive --force
+      - name: Publish to production
+        working-directory: apps/${{ inputs.app }}
+        env:
+          # The subdomain each site asks for on its first deploy.
+          DEV_DOMAIN: ${{ inputs.app == 'site' && 'firstpass-hq' || '' }}
+        run: |
+          eas deploy --prod --non-interactive --export-dir dist --dev-domain "$DEV_DOMAIN" --json > deploy.json
+          cat deploy.json
+          node -e '
+            const d = require("./deploy.json");
+            const urls = [d.production?.url, d.url, ...(d.aliases ?? []).map(a => a.url)].filter(Boolean);
+            console.log(["### Published", "", ...[...new Set(urls)].map(u => `- ${u}`)].join("\n"));
+          ' >> "$GITHUB_STEP_SUMMARY"
