@@ -1,7 +1,7 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import { AppState } from 'react-native';
-import { fetchEventsSince, loadGame, type GameListEntry } from '../lib/games';
+import { fetchEventsSince, followGame, loadGame, type GameListEntry } from '../lib/games';
 import { client } from '../lib/supabase';
 import { GameFeed } from './feed';
 import { fromBroadcast } from './log';
@@ -15,7 +15,11 @@ export function useLiveGame(gameId: string): { game: GameListEntry | null | unde
 
   useEffect(() => {
     let cancelled = false;
-    loadGame(gameId).then(
+    // Follow first, so a game opened from a link or after a reload gets its
+    // events too. HQ checks again here; null means it said no.
+    followGame(gameId)
+      .then((id) => (id ? loadGame(gameId) : null))
+      .then(
       (g) => !cancelled && setGame(g),
       (e: unknown) => !cancelled && setGameError(e instanceof Error ? e.message : String(e)),
     );

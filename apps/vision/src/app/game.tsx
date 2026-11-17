@@ -1,33 +1,62 @@
 import { colors } from '@firstpass/ui';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AlertCard, NoCard } from '../../components/AlertCard';
-import { BreakView } from '../../components/BreakView';
-import { ChangesTab } from '../../components/ChangesTab';
-import { CourtTab } from '../../components/CourtTab';
-import { OnCourtTab } from '../../components/OnCourtTab';
-import { MiniCourt } from '../../components/MiniCourt';
-import { OnCourtStrip } from '../../components/OnCourtStrip';
-import { Tiles } from '../../components/Tiles';
-import { Btn, ui } from '../../components/ui';
-import { useCardPrefs } from '../../live/useCardPrefs';
-import { runAlerts, visibleLive } from '../../stats/alerts';
-import { quarterLine, sayPoints } from '../../stats/breakview';
-import { verdicts } from '../../stats/changes';
-import { lossesThisQuarter, matchUps, onCourt } from '../../stats/markers';
-import { buildModel } from '../../stats/possessions';
-import { tiles } from '../../stats/tiles';
-import { freshness, scoreSummary, type Freshness, type ScoreSummary } from '../../live/summary';
-import { useLiveGame, useNow } from '../../live/useLiveGame';
-import type { Connection } from '../../live/feed';
+import { AlertCard, NoCard } from '../components/AlertCard';
+import { BreakView } from '../components/BreakView';
+import { ChangesTab } from '../components/ChangesTab';
+import { CourtTab } from '../components/CourtTab';
+import { OnCourtTab } from '../components/OnCourtTab';
+import { MiniCourt } from '../components/MiniCourt';
+import { OnCourtStrip } from '../components/OnCourtStrip';
+import { Tiles } from '../components/Tiles';
+import { Btn, ui } from '../components/ui';
+import { signOut, useSession } from '../lib/auth';
+import { useCardPrefs } from '../live/useCardPrefs';
+import { runAlerts, visibleLive } from '../stats/alerts';
+import { quarterLine, sayPoints } from '../stats/breakview';
+import { verdicts } from '../stats/changes';
+import { lossesThisQuarter, matchUps, onCourt } from '../stats/markers';
+import { buildModel } from '../stats/possessions';
+import { tiles } from '../stats/tiles';
+import { freshness, scoreSummary, type Freshness, type ScoreSummary } from '../live/summary';
+import { useLiveGame, useNow } from '../live/useLiveGame';
+import type { Connection } from '../live/feed';
 
 /** Two columns from this width: landscape phones and tablets. */
 const TWO_COLUMNS = 700;
 
+/*
+ * The game is /game?id=<id>, not /game/<id>: the web version is a set of
+ * static pages, and a static page can't stand for every game id (Expo's
+ * static rendering docs: dynamic routes "will not work out of the box").
+ */
 export default function LiveGame() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id = '' } = useLocalSearchParams<{ id?: string }>();
+  const session = useSession();
+  // On the web this page can be opened from a link or a reload while signed
+  // out: sign in first, then come straight back here.
+  if (Platform.OS === 'web' && session === null) {
+    return <Redirect href={{ pathname: '/', params: { next: `/game?id=${encodeURIComponent(id)}` } }} />;
+  }
+  if (session === undefined) {
+    return (
+      <SafeAreaView style={[ui.screen, styles.center]}>
+        <ActivityIndicator color={colors.text} />
+      </SafeAreaView>
+    );
+  }
+  return <SignedInGame id={id} />;
+}
+
+/** Back to the list, even when the game was opened straight from a link. */
+function backToGames() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/');
+}
+
+function SignedInGame({ id }: { id: string }) {
   const { game, feed, gameError } = useLiveGame(id);
   const now = useNow();
   const { width } = useWindowDimensions();
@@ -63,7 +92,8 @@ export default function LiveGame() {
     return (
       <SafeAreaView style={[ui.screen, styles.center, styles.pad]}>
         <Text style={ui.body}>{gameError ?? "This game isn't one you can see. Ask your club admin to check you're a coach or manager of the team."}</Text>
-        <Btn label="Back to games" onPress={() => router.back()} />
+        <Btn label="Back to games" onPress={backToGames} />
+        {Platform.OS === 'web' ? <Btn label="Sign out" tone="quiet" onPress={() => void signOut()} /> : null}
       </SafeAreaView>
     );
   }
@@ -79,12 +109,13 @@ export default function LiveGame() {
   return (
     <SafeAreaView style={ui.screen}>
       <View style={styles.top}>
-        <Btn label="‹ Games" tone="quiet" onPress={() => router.back()} style={styles.back} />
+        <Btn label="‹ Games" tone="quiet" onPress={backToGames} style={styles.back} />
         <View style={styles.grow} />
         {inBreak && !showBreak && events.length > 0 ? (
           <Btn label="Break view" tone="dim" onPress={() => setClosedBreak(null)} style={styles.breakBtn} />
         ) : null}
         <ConnectionChip connection={feed.connection} fresh={fresh} />
+        {Platform.OS === 'web' ? <Btn label="Sign out" tone="quiet" onPress={() => void signOut()} style={styles.back} /> : null}
       </View>
       {fresh.kind !== 'fresh' ? <StaleBanner fresh={fresh} error={feed.error} /> : null}
       <ScrollView contentContainerStyle={styles.body}>
