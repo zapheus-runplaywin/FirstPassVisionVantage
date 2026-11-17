@@ -9,6 +9,7 @@ Live netball stats. **FirstPass Vantage** is the statistician's tablet app for e
 | `apps/vantage` | Expo tablet app for the statistician (Android first, then iPad), landscape |
 | `apps/vision` | Expo app for coaches: phone, tablet and web, portrait and landscape |
 | `apps/site` | FirstPass HQ's public pages for the app stores (privacy policy, support, delete my account), a static site on Expo Hosting |
+| `plugins/vantage-deck` | Stream Deck plugin: a 32-key Stream Deck XL as Vantage's who, what and detail keys, from a Mac. See [its README](plugins/vantage-deck/README.md) |
 | `packages/engine` | Pure stats engine shared by both apps and published to npm: fold events into game state |
 | `packages/schema` | Event model shared by the apps and the database, published to npm |
 | `packages/ui` | Brand colours and shared UI |

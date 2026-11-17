@@ -11,12 +11,14 @@ import { Court } from '../../components/Court';
 import { Ribbon, WhatPanel, WhoPanel } from '../../components/Panels';
 import { ClockSheet, EditSheet, ExportSheet, HelperSheet, StatsSheet, SubsSheet } from '../../components/Sheets';
 import { Btn, fmtClock, Panel, s, Seg } from '../../components/ui';
+import { deckKeys, deckPress, END_CONFIRM_MS } from '../../game/deck';
 import { describe } from '../../game/describe';
 import { emptyPending, type Pending } from '../../game/entry';
 import { helperNotes, unseenNotes } from '../../game/helperNotes';
 import { STARTING_LINEUP } from '../../game/newGame';
 import { useClock, useGame, type Game } from '../../game/useGame';
 import { getGame } from '../../lib/db';
+import { deckWanted, useDeck } from '../../lib/deck';
 import { setHelper, useRemote } from '../../lib/helper';
 import { syncLabel, useSync } from '../../lib/sync';
 
@@ -210,6 +212,59 @@ function Entry({ game }: { game: Game }) {
     }
   }, [append, clock.period, clock.running, timeUp]);
 
+  // Stream Deck keys (game/deck.ts): the same Who, What and detail buttons as the screen, pressed
+  // on a Stream Deck XL beside the Mac. End quarter takes two presses, because a key is easier to
+  // hit by accident than a button on the screen.
+  const [deckOn] = useState(deckWanted);
+  const [endArmed, setEndArmed] = useState(false);
+  useEffect(() => {
+    if (!endArmed) return;
+    const t = setTimeout(() => setEndArmed(false), END_CONFIRM_MS);
+    return () => clearTimeout(t);
+  }, [endArmed]);
+  const keys = deckKeys({
+    pending,
+    state,
+    lineup,
+    names: { us: config.us, them: config.them },
+    period: clock.period,
+    clockText: fmtClock(clock.remainingMs),
+    running: clock.running,
+    timeUp,
+    inBreak: clock.inBreak,
+    endArmed,
+  });
+  const deck = useDeck(deckOn, keys, (id) => {
+    const press = deckPress(id, keys);
+    if (!press) return;
+    if (press.kind !== 'endQuarter') setEndArmed(false);
+    switch (press.kind) {
+      case 'pick':
+        return onPick(press.team, press.player);
+      case 'action':
+        return onAction(press.action);
+      case 'cause':
+        return onCause(press.cause);
+      case 'rebound':
+        return onRebound(press.rebound);
+      case 'rebounder':
+        return onRebounder(press.player);
+      case 'skip':
+        if (pending) commit(pending);
+        return;
+      case 'flag':
+        return flag();
+      case 'undo':
+        return undo();
+      case 'clock':
+        return startStop();
+      case 'endQuarter':
+        if (!endArmed) return setEndArmed(true);
+        setEndArmed(false);
+        return endQuarter();
+    }
+  });
+
   const say = (e: LiveEvent) => describe(e, config, lineups.get(e.id) ?? lineup);
   const openSheet = sheet ? (
     sheet.kind === 'edit' ? (
@@ -315,6 +370,7 @@ function Entry({ game }: { game: Game }) {
           <Btn label={`${amberCount} to fill`} tone="selected" onPress={() => latestAmber && setSheet({ kind: 'edit', event: latestAmber })} style={styles.topBtn} />
         ) : null}
         <View style={{ flex: 1 }} />
+        {deck !== 'off' ? <Pill label="Stream Deck" value={deck === 'connected' ? 'on' : 'not found'} /> : null}
         {pairCode ? <Pill label="Pair code" value={`${pairCode.slice(0, 3)} ${pairCode.slice(3)}`} /> : null}
         {!compact || sync.kind === 'lease lost' || sync.kind === 'refused' || sync.kind === 'offline' ? (
           <Text numberOfLines={2} style={[s.muted, styles.syncText, (sync.kind === 'lease lost' || sync.kind === 'refused') && styles.warnText]}>

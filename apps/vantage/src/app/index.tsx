@@ -8,6 +8,7 @@ import { gameStatus, mergeStreams, type GameStatus } from '@firstpass/engine';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
 import { clubs } from '../lib/clubs';
 import { listGames, loadEvents, type SavedGame } from '../lib/db';
+import { deckWanted, setDeckWanted } from '../lib/deck';
 import { joinAsHelper } from '../lib/helper';
 import { chooseClub, leaveClub, useClub } from '../lib/supabase';
 
@@ -26,6 +27,7 @@ export default function Home() {
   const [helpCode, setHelpCode] = useState('');
   const [helpError, setHelpError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [deck, setDeck] = useState(deckWanted);
   const help = () => {
     setJoining(true);
     setHelpError(null);
@@ -110,6 +112,23 @@ export default function Home() {
             {helpError ? <Text style={styles.error}>{helpError}</Text> : null}
           </View>
         ) : null}
+        <View style={styles.help}>
+          <Text style={s.h2}>Stream Deck</Text>
+          <Text style={s.muted}>
+            On a Mac with a 32-key Stream Deck XL and the FirstPass Vantage plugin, the keys do who, what and the detail while you tap where on the court.
+            Leave this off on a tablet or phone.
+          </Text>
+          <View style={styles.account}>
+            <Btn
+              label={deck ? 'Stream Deck keys are on' : 'Use Stream Deck keys'}
+              tone={deck ? 'selected' : 'target'}
+              onPress={() => {
+                setDeckWanted(!deck);
+                setDeck(!deck);
+              }}
+            />
+          </View>
+        </View>
         {games.length ? <Text style={s.h2}>Saved games</Text> : null}
         {games.map((g) => (
           <Btn

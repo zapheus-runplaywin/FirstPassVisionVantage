@@ -1,0 +1,33 @@
+{
+  "name": "@firstpass/vantage-deck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stream Deck plugin for FirstPass Vantage: a Stream Deck XL's 32 keys become the game screen's who, what and detail buttons.",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "validate": "streamdeck validate com.runplaywin.firstpass-vantage.sdPlugin",
+    "pack": "rollup -c && streamdeck pack com.runplaywin.firstpass-vantage.sdPlugin --output dist --force",
+    "link": "streamdeck link com.runplaywin.firstpass-vantage.sdPlugin",
+    "restart": "streamdeck restart com.runplaywin.firstpass-vantage"
+  },
+  "dependencies": {
+    "@elgato/streamdeck": "3.0.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@elgato/cli": "1.10.3",
+    "@rollup/plugin-commonjs": "29.0.3",
+    "@rollup/plugin-node-resolve": "16.0.3",
+    "@rollup/plugin-terser": "1.0.2",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "esbuild": "0.28.2",
+    "rollup": "4.66.0",
+    "rollup-plugin-esbuild": "6.2.1",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
+  }
+}
