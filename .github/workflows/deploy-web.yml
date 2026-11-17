@@ -7,6 +7,10 @@ name: Deploy web
 # site: FirstPass HQ's public pages (privacy policy, support, delete my
 #   account) from apps/site. Refuses to publish while any page still holds
 #   placeholder text.
+# vision: FirstPass Vision for coaches' phone browsers, at
+#   https://firstpass-vision.expo.app. Its sign-in address,
+#   https://firstpass-vision.expo.app/auth-callback, must be on each club
+#   Supabase project's redirect list first.
 #
 # The first run fixes the address for good: Expo reserves a subdomain even
 # after a project is deleted. There are no preview addresses, so only the
@@ -17,7 +21,7 @@ on:
       app:
         description: Site to publish
         type: choice
-        options: [site]
+        options: [site, vision]
         default: site
 
 concurrency:
@@ -41,6 +45,14 @@ jobs:
         run: |
           pnpm test
           pnpm build:publish
+      - name: Test and export Vision for the web
+        if: inputs.app == 'vision'
+        working-directory: apps/vision
+        run: |
+          pnpm test
+          npx expo export --platform web --output-dir dist
+        env:
+          CI: 1
       - uses: expo/expo-github-action@v9
         with:
           eas-version: latest
@@ -53,7 +65,7 @@ jobs:
         working-directory: apps/${{ inputs.app }}
         env:
           # The subdomain each site asks for on its first deploy.
-          DEV_DOMAIN: ${{ inputs.app == 'site' && 'firstpass-hq' || '' }}
+          DEV_DOMAIN: ${{ inputs.app == 'site' && 'firstpass-hq' || 'firstpass-vision' }}
         run: |
           eas deploy --prod --non-interactive --export-dir dist --dev-domain "$DEV_DOMAIN" --json > deploy.json
           cat deploy.json

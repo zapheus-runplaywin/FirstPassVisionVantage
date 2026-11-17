@@ -51,6 +51,10 @@ Add an Expo package to an app with `pnpm --filter @firstpass/vantage exec expo i
 
 The shared PlayHQ client, `@firstpass/playhq`, lives in the FirstPass Studio repository (`packages/playhq`) and is published to the public npm registry. Add it to an app with `pnpm --filter @firstpass/vantage add @firstpass/playhq@^0.2.0`. To change it, open a Studio pull request that bumps its version; once it is published, raise the version range here.
 
+## Vision on the web
+
+Coaches use Vision in their phone's browser at https://firstpass-vision.expo.app, published by the same **Deploy web** workflow (app `vision`). See [apps/vision/README.md](apps/vision/README.md#on-the-web). Before the first press, `https://firstpass-vision.expo.app/auth-callback` goes on each club Supabase project's redirect list.
+
 ## Test builds
 
 Builds run on Expo Application Services (EAS). `preview` makes an Android APK that installs directly on a tablet.
@@ -80,4 +84,4 @@ The app stores need a public privacy policy, a support page and a page that tell
 
 - The words are written once, in the FirstPass HQ repo's `docs/store/public-pages/`, next to the store answers they must agree with. `scripts/sync-public-pages.sh [path to a FirstPassHQ checkout]` copies them into `apps/site/content/` verbatim, notes the HQ commit in `content/SOURCE.md` and builds the site to check it. Don't edit the copies here.
 - `pnpm --filter @firstpass/site build` writes `apps/site/dist` for a look in a browser. Tests check every page renders, runs no script and loads nothing from another site.
-- To publish: **Actions → Deploy web → Run workflow**, site `site`. It tests and builds first, and refuses while any page still holds placeholder text. It needs the same `EXPO_TOKEN` secret as the builds. The first run creates the Expo project and fixes the address for good (Expo never releases a subdomain).
+- To publish: **Actions → Deploy web → Run workflow**, app `site`. It tests and builds first, and refuses while any page still holds placeholder text. It needs the same `EXPO_TOKEN` secret as the builds. The first run creates the Expo project and fixes the address for good (Expo never releases a subdomain).

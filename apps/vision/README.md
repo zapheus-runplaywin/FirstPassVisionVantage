@@ -60,5 +60,33 @@ What the database lets Vision do is tested in FirstPassHQ,
 `supabase/tests/vision-coach-view.sql`.
 
 Clubs are listed in `app.json` under `expo.extra.clubs`, as in Vantage. Each
-club's Supabase project must allow the redirect URL
-`firstpass-vision://auth-callback`.
+club's Supabase project must allow the redirect URLs
+`firstpass-vision://auth-callback` (the phone app) and
+`https://firstpass-vision.expo.app/auth-callback` (the web version).
+
+## On the web
+
+Coaches can use Vision in their phone's browser at
+https://firstpass-vision.expo.app. It is published with **Actions → Deploy
+web → Run workflow**, app `vision`, which tests, exports the static web
+version and publishes it to Expo Hosting. The workflow runs only when pressed.
+
+- Signing in: the whole page goes to Google and comes back to
+  `/auth-callback` (`src/app/auth-callback.tsx`), which swaps Google's
+  one-time code for a session and opens the page the coach was going to.
+  `src/lib/webAuth.ts` is the only place a code is swapped, at most once. The
+  phone app's sign-in (`src/lib/auth.ts`) doesn't change, and on the phone
+  `/auth-callback` only sends the app home.
+- A game is `/game?id=<id>`, not `/game/<id>`, because the web version is
+  static pages and a static page can't stand for every game id. Opening a game
+  follows it in HQ first (`follow_game`), so a link or a reload works, and HQ
+  checks access again each time.
+- A game link opened while signed out goes to sign-in with `?next=`, and only
+  a page on this site is accepted there.
+- The session lives in the browser's storage, as on any signed-in website.
+  Sign out is on every signed-in screen, signing out reloads the start page,
+  a page brought back by the back button is loaded again, and the sign-in
+  screen says not to use a shared computer.
+- To try it locally: `npx expo export --platform web --output-dir dist`, then
+  `npx expo serve`. Sign-in only works from an address on the club's redirect
+  list.

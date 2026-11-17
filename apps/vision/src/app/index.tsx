@@ -1,18 +1,21 @@
 import { colors } from '@firstpass/ui';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Btn, ui } from '../components/ui';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
 import { clubs, type ClubEntry } from '../lib/clubs';
 import { followGame, loadGames, type GameListEntry } from '../lib/games';
 import { chooseClub, leaveClub, useClub } from '../lib/supabase';
+import { safeNext } from '../lib/webAuth';
 
 /** Club, then sign-in, then the games this coach can follow. */
 export default function Home() {
   const club = useClub();
   const session = useSession();
+  // On the web, a game link opened while signed out comes here with ?next=/game?id=<id>.
+  const { next } = useLocalSearchParams<{ next?: string }>();
   return (
     <SafeAreaView style={ui.screen}>
       <View style={styles.page}>
@@ -22,7 +25,7 @@ export default function Home() {
         ) : !club ? (
           <ChooseClub />
         ) : !session ? (
-          <SignIn club={club} />
+          <SignIn club={club} next={safeNext(next)} />
         ) : (
           <Games club={club} email={session.user.email ?? null} />
         )}
@@ -71,14 +74,14 @@ function ChooseClub() {
   );
 }
 
-function SignIn({ club }: { club: ClubEntry }) {
+function SignIn({ club, next }: { club: ClubEntry; next: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const go = async () => {
     setBusy(true);
     setError(null);
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -89,6 +92,9 @@ function SignIn({ club }: { club: ClubEntry }) {
     <View style={styles.form}>
       <Text style={ui.h1}>{club.name}</Text>
       <Text style={ui.muted}>Sign in with the Google account you use for FirstPass HQ. Coaches and managers see their team's games.</Text>
+      {Platform.OS === 'web' ? (
+        <Text style={ui.muted}>Use your own phone or computer, not a shared one: you stay signed in in this browser until you sign out.</Text>
+      ) : null}
       {error ? <Text style={ui.error}>{error}</Text> : null}
       <Btn label={busy ? 'Signing in…' : 'Sign in with Google'} onPress={go} disabled={busy} />
       <Btn label="Change club" tone="quiet" onPress={() => void leaveClub()} />
@@ -126,7 +132,7 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
     setError(null);
     try {
       const id = await followGame(gameId);
-      if (id) router.push({ pathname: '/game/[id]', params: { id } });
+      if (id) router.push({ pathname: '/game', params: { id } });
       else setError("This game isn't one you can see any more. Pull down to refresh the list.");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
