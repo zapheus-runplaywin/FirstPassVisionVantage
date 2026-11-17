@@ -40,5 +40,6 @@ cat > "$dest/SOURCE.md" <<SRC
 Copied from FirstPassHQ \`docs/store/public-pages/\` at commit \`$commit\`$dirty by \`scripts/sync-public-pages.sh\`. Change the words there, then run the script again.
 SRC
 
-(cd "$repo_root/apps/site" && pnpm --silent build:publish)
+# Plain build: the "Deploy web" workflow refuses blanks, not this copy.
+(cd "$repo_root/apps/site" && pnpm --silent build)
 echo "Copied ${pages[*]} from HQ $commit$dirty."
