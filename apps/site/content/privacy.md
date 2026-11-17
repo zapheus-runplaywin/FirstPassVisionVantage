@@ -8,7 +8,7 @@ FirstPass HQ is an app that netball clubs use to run the club: messages, attenda
 
 FirstPass HQ is made and run by [OPERATOR NAME] ("FirstPass", "we"). You can reach us at [SUPPORT EMAIL].
 
-Each club that uses FirstPass HQ decides who may join it and what it records, and has its own privacy policy for its members. FirstPass runs the app and each club's database for the club. Questions about what your club records go to your club first. Questions about the app go to us.
+Each club that uses FirstPass HQ decides who may join it and what it records, and may have its own privacy policy for its members. FirstPass runs the app and each club's database for the club. Questions about what your club records go to your club first. Questions about the app go to us.
 
 ## What the app keeps
 
@@ -54,9 +54,11 @@ These services help us run the app:
 - **Google** signs you in when you choose Continue with Google. The app receives your Google account's email.
 - **Expo, Apple and Google** deliver notifications to your phone. Each notification's title and text (which can include a person's name, never injury details) and your phone's notification token pass through them.
 
+Google sign-in and the notification services are run from outside Australia, so your Google account's email at sign-in, and each notification's title, text and token, are handled by those companies outside Australia under their own privacy terms. Everything else stays in your club's database in Sydney.
+
 ## How long it is kept
 
-Each club chooses how long it keeps each kind of record, and nothing is removed until the club switches on removing old records. The app's recommended periods are:
+Each club chooses how long it keeps each kind of record, and nothing is removed until the club switches on removing old records. The app's recommended periods for the main kinds of record are:
 
 - daily check-ins and training sessions: 1 year;
 - attendance, absences and session plans: 1 year;
@@ -66,6 +68,9 @@ Each club chooses how long it keeps each kind of record, and nothing is removed 
 - injuries: 7 years after they are cleared, or after the athlete leaves the club;
 - medical and emergency details: 2 years after their last yearly check;
 - the record of who opened a child's records: 7 years;
+- surveys: 3 years after they close for club surveys, 2 years for squad and team surveys, and 6 months for quick team polls;
+- who voted for whom in awards: 1 year after the award closes;
+- integrity training certificates: 1 year;
 - safeguarding records: 30 years after each one ended;
 - concerns: never removed.
 
