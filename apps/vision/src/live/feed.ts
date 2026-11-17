@@ -17,8 +17,11 @@ export type Connection = 'connecting' | 'live' | 'polling';
 
 export interface FeedDeps {
   gameId: string;
-  /** Primary events with seq above `afterSeq`, in seq order. */
-  fetchSince: (afterSeq: number) => Promise<GameEvent[]>;
+  /**
+   * Primary events with seq above `afterSeq`, and every helper event beyond
+   * what is held (`helper`: how far each helper stream is held, by stream).
+   */
+  fetchSince: (afterSeq: number, helper: Record<string, number>) => Promise<GameEvent[]>;
   onChange: () => void;
   now?: () => number;
 }
@@ -104,7 +107,7 @@ export class GameFeed {
   private async read(): Promise<void> {
     this.lastReadStartedAt = this.now();
     try {
-      const events = await this.deps.fetchSince(this.log.unbrokenThrough);
+      const events = await this.deps.fetchSince(this.log.unbrokenThrough, this.log.helperCursors);
       if (this.stopped) return;
       this.lastReadAt = this.now();
       this.error = null;

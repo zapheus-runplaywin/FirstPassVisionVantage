@@ -164,16 +164,21 @@ export function Ribbon({
   describe,
   onEdit,
   onDelete,
+  title = 'Last events',
+  empty = 'No events yet. Start the clock, then tap the court.',
 }: {
   events: LiveEvent[];
   amberIds: ReadonlySet<string>;
   describe: (e: LiveEvent) => string;
   onEdit: (e: LiveEvent) => void;
   onDelete: (e: LiveEvent) => void;
+  title?: string;
+  /** What to say when there are no events. */
+  empty?: string;
 }) {
   return (
-    <Panel title="Last events" hint="tap to edit" style={st.ribbon}>
-      {events.length === 0 ? <Text style={st.empty}>No events yet. Start the clock, then tap the court.</Text> : null}
+    <Panel title={title} hint="tap to edit" style={st.ribbon}>
+      {events.length === 0 ? <Text style={st.empty}>{empty}</Text> : null}
       {events.map((e) => (
         <View key={e.id} style={st.row}>
           <Pressable accessibilityRole="button" onPress={() => onEdit(e)} style={st.rowMain}>

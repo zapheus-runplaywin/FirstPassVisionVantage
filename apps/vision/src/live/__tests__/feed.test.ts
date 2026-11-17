@@ -32,7 +32,7 @@ describe('GameFeed', () => {
     const { feed, fetchSince } = setup(server);
     feed.start();
     await vi.advanceTimersByTimeAsync(0);
-    expect(fetchSince).toHaveBeenCalledWith(0);
+    expect(fetchSince).toHaveBeenCalledWith(0, {});
     expect(feed.log.events).toHaveLength(3);
     expect(feed.lastEventAt).toBe(Date.now());
     feed.stop();
@@ -64,7 +64,7 @@ describe('GameFeed', () => {
     feed.receive(server[4]!); // seq 5 arrives, 3 and 4 were missed
     expect(feed.log.events).toHaveLength(2);
     await vi.advanceTimersByTimeAsync(0);
-    expect(fetchSince).toHaveBeenCalledWith(2);
+    expect(fetchSince).toHaveBeenCalledWith(2, {});
     expect(feed.log.events.map((e) => e.seq)).toEqual([1, 2, 3, 4, 5]);
     feed.stop();
   });
@@ -104,7 +104,7 @@ describe('GameFeed', () => {
     fetchSince.mockClear();
     feed.setChannelStatus('SUBSCRIBED');
     await vi.advanceTimersByTimeAsync(0);
-    expect(fetchSince).toHaveBeenCalledWith(2);
+    expect(fetchSince).toHaveBeenCalledWith(2, {});
     expect(feed.log.events).toHaveLength(4);
     expect(feed.connection).toBe('live');
     feed.stop();
@@ -158,5 +158,46 @@ describe('GameFeed', () => {
     await vi.advanceTimersByTimeAsync(SAFETY_MS * 2);
     expect(fetchSince).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("reads a helper statistician's changes and asks only for what it lacks next time", async () => {
+    const server = events(3);
+    const helper = (seq: number, target: string): GameEvent =>
+      ({ id: `h${seq}`, gameId: 'g', stream: 'helper:hana', seq, type: 'correction', payload: { target, op: 'delete' }, recordedAt: '2026-11-13T09:05:00Z' }) as GameEvent;
+    const held: GameEvent[] = [...server, helper(1, 'e3')];
+    const fetchSince = vi.fn(async (after: number, cursors: Record<string, number>) =>
+      held.filter((e) => (e.stream === 'primary' ? e.seq > after : e.seq > (cursors[e.stream] ?? 0))),
+    );
+    const feed = new GameFeed({ gameId: 'g', fetchSince, onChange: vi.fn(), now: () => Date.now() });
+    feed.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(feed.log.events.map((e) => e.id)).toEqual(['e1', 'e2', 'e3', 'h1']);
+
+    held.push(helper(2, 'e2'));
+    await feed.refresh();
+    expect(fetchSince).toHaveBeenLastCalledWith(3, { 'helper:hana': 1 });
+    expect(feed.log.events.map((e) => e.id)).toEqual(['e1', 'e2', 'e3', 'h1', 'h2']);
+    feed.stop();
+  });
+
+  it("asks again straight away when a helper's broadcast leaves a hole", async () => {
+    const server = events(2);
+    const h = (seq: number): GameEvent =>
+      ({ id: `h${seq}`, gameId: 'g', stream: 'helper:hana', seq, type: 'correction', payload: { target: 'e2', op: 'delete' }, recordedAt: '2026-11-13T09:05:00Z' }) as GameEvent;
+    const held: GameEvent[] = [...server];
+    const fetchSince = vi.fn(async (after: number, cursors: Record<string, number>) =>
+      held.filter((e) => (e.stream === 'primary' ? e.seq > after : e.seq > (cursors[e.stream] ?? 0))),
+    );
+    const feed = new GameFeed({ gameId: 'g', fetchSince, onChange: vi.fn(), now: () => Date.now() });
+    feed.start();
+    await vi.advanceTimersByTimeAsync(0);
+    const reads = fetchSince.mock.calls.length;
+    // The helper's first change was missed; the second arrives by broadcast.
+    held.push(h(1), h(2));
+    feed.receive(h(2));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchSince.mock.calls.length).toBe(reads + 1);
+    expect(feed.log.events.map((e) => e.id)).toEqual(['e1', 'e2', 'h1', 'h2']);
+    feed.stop();
   });
 });

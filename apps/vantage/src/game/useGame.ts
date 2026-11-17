@@ -1,13 +1,24 @@
-import { clockState, deriveGame, QUARTERS, reviewGame, type GameState, type ReviewIssue } from '@firstpass/engine';
-import type { EventOf, GameConfig, GameEvent, GameEventType, Position } from '@firstpass/schema';
+import { clockState, deriveGame, mergeStreams, QUARTERS, reviewGame, type GameState, type ReviewIssue } from '@firstpass/engine';
+import type { EventOf, GameConfig, GameEvent, GameEventType, Position, StreamId } from '@firstpass/schema';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { appendEvent, getGame, loadEvents } from '../lib/db';
+import { onRemoteEvents } from '../lib/helper';
 import { uuidv7 } from '../lib/uuid';
+import { nextSeq } from './helperEvents';
 
 export interface Game {
   id: string;
   config: GameConfig;
+  /**
+   * The game's record: the primary stream with a helper statistician's
+   * substitutions and corrections merged in. Everything on screen is folded
+   * from this.
+   */
   events: GameEvent[];
+  /** The stream this tablet writes: 'primary' when recording the game, 'helper:<id>' when helping with it. */
+  ownStream: StreamId;
+  /** How many events this tablet has written, so the outbox knows when there is more to send. */
+  ownCount: number;
   state: GameState;
   /** Our bench after the latest lineup change. */
   bench: string[];
@@ -18,13 +29,28 @@ export interface Game {
   append<T extends GameEventType>(type: T, payload: EventOf<T>['payload']): EventOf<T>;
 }
 
-/** Loads a game from the device and keeps its derived state in step with every new event. */
+/**
+ * Loads a game from the device and keeps its derived state in step with every
+ * new event: the ones written here, and the other tablet's as they are read
+ * from the club (lib/helper.ts).
+ */
 export function useGame(id: string): Game | null {
   const [saved] = useState(() => getGame(id));
-  const [events, setEvents] = useState<GameEvent[]>(() => (saved ? loadEvents(id) : []));
+  // Everything held, every stream.
+  const [held, setHeld] = useState<GameEvent[]>(() => (saved ? loadEvents(id) : []));
+  const ownStream: StreamId = saved?.ownStream ?? 'primary';
 
-  // The log as of the last write, so several events in one handler get consecutive seqs.
-  const log = useRef(events);
+  // What is held as of the last write, so several events in one handler get consecutive seqs.
+  const log = useRef(held);
+
+  useEffect(
+    () =>
+      onRemoteEvents(id, () => {
+        log.current = loadEvents(id);
+        setHeld(log.current);
+      }),
+    [id],
+  );
 
   const append = useCallback(
     <T extends GameEventType>(type: T, payload: EventOf<T>['payload']): EventOf<T> => {
@@ -32,29 +58,31 @@ export function useGame(id: string): Game | null {
       const created = {
         id: uuidv7(),
         gameId: id,
-        stream: 'primary',
-        seq: (prev[prev.length - 1]?.seq ?? 0) + 1,
+        stream: ownStream,
+        seq: nextSeq(prev, ownStream),
         type,
         payload,
         recordedAt: new Date().toISOString(),
       } as EventOf<T>;
       appendEvent(created);
       log.current = [...prev, created];
-      setEvents(log.current);
+      setHeld(log.current);
       return created;
     },
-    [id],
+    [id, ownStream],
   );
 
   return useMemo(() => {
     if (!saved) return null;
+    const events = mergeStreams(held);
     const state = deriveGame(saved.config, events);
     // At full time the audit covers every quarter; at other breaks, the one just played.
     const fullTime = state.period >= QUARTERS && clockState(events, saved.config.quarterMs, Date.now()).inBreak;
     const issues = reviewGame(saved.config, events, fullTime ? 'all' : state.period);
     const amberIds = new Set(issues.flatMap((i) => (i.kind === 'amber' || i.kind === 'flag' ? [i.event.id] : [])));
-    return { id, config: saved.config, events, state, bench: benchOf(events), issues, amberIds, append };
-  }, [saved, events, id, append]);
+    const ownCount = held.reduce((n, e) => (e.stream === ownStream ? n + 1 : n), 0);
+    return { id, config: saved.config, events, ownStream, ownCount, state, bench: benchOf(events), issues, amberIds, append };
+  }, [saved, held, id, append, ownStream]);
 }
 
 function benchOf(events: readonly GameEvent[]): string[] {
@@ -83,11 +111,7 @@ export function useClock(game: Game | null) {
   return game ? clockState(game.events, game.config.quarterMs, now) : null;
 }
 
-export function shortName(label: string | undefined): string {
-  if (!label) return '';
-  const parts = label.trim().split(/\s+/);
-  return parts.length > 1 ? parts.slice(1).join(' ') : (parts[0] ?? '');
-}
+export { shortName } from './names';
 
 export function lineupOf(state: GameState): Partial<Record<Position, string>> {
   return state.lineup ?? {};

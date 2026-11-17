@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 const db = vi.hoisted(() => ({
-  game: { id: 'g1', config: {}, createdAt: '', clubCode: 'HAWKS', teamId: null, fixtureId: 'f1', pairCode: null as string | null, ackedSeq: 0 },
+  game: { id: 'g1', config: {}, createdAt: '', clubCode: 'HAWKS', teamId: null, fixtureId: 'f1', pairCode: null as string | null, ackedSeq: 0, ownStream: 'primary' as string, helperOn: false },
   events: [] as GameEvent[],
   kv: new Map<string, string>(),
 }));
@@ -19,7 +19,7 @@ vi.mock('./db', () => ({
   getGame: () => ({ ...db.game }),
   getKv: (k: string) => db.kv.get(k) ?? null,
   setKv: (k: string, v: string) => db.kv.set(k, v),
-  loadUnsent: (_id: string, after: number, limit: number) => db.events.filter((e) => e.seq > after).slice(0, limit),
+  loadUnsent: (_id: string, stream: string, after: number, limit: number) => db.events.filter((e) => e.stream === stream && e.seq > after).slice(0, limit),
   markSynced: (_id: string, acked: number, code: string | null) => {
     db.game.ackedSeq = acked;
     if (code) db.game.pairCode = code;
@@ -40,6 +40,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   db.game.pairCode = null;
   db.game.ackedSeq = 0;
+  db.game.ownStream = 'primary';
   db.events = [];
   rpc.mockReset();
 });
@@ -125,5 +126,61 @@ describe('syncGame', () => {
     await vi.advanceTimersByTimeAsync(20_000);
     expect(rpc.mock.calls.length).toBeGreaterThan(3);
     expect(currentSyncState('g1')).toMatchObject({ kind: 'offline', count: 2 });
+  });
+
+  it("a helper sends their own stream and never creates the game", async () => {
+    db.game.ownStream = 'helper:u1';
+    db.game.pairCode = '111111';
+    db.events = [
+      { id: 'p1', gameId: 'g1', stream: 'primary', seq: 1 },
+      { id: 'p2', gameId: 'g1', stream: 'primary', seq: 2 },
+      { id: 'h1', gameId: 'g1', stream: 'helper:u1', seq: 1 },
+      { id: 'h2', gameId: 'g1', stream: 'helper:u1', seq: 2 },
+      { id: 'o1', gameId: 'g1', stream: 'helper:other', seq: 1 },
+    ] as unknown as GameEvent[];
+    rpc.mockImplementation(async (_fn: string, args: { p_events?: GameEvent[] }) => ({ data: args.p_events?.at(-1)?.seq ?? 0, error: null }));
+    await syncGame('g1');
+    expect(rpc.mock.calls.map((c) => c[0])).toEqual(['append_game_events']);
+    expect(rpc.mock.calls[0]?.[1]).toMatchObject({ p_game_id: 'g1', p_stream: 'helper:u1' });
+    // Only the helper's own events go up: never the copies of the recorder's or another helper's.
+    expect((rpc.mock.calls[0]?.[1].p_events as GameEvent[]).map((e) => e.id)).toEqual(['h1', 'h2']);
+    expect(db.game.ackedSeq).toBe(2);
+    expect(currentSyncState('g1')).toEqual({ kind: 'synced' });
+  });
+
+  it('a helper with no pair code on the device still never creates the game', async () => {
+    db.game.ownStream = 'helper:u1';
+    db.events = [{ id: 'h1', gameId: 'g1', stream: 'helper:u1', seq: 1 }] as unknown as GameEvent[];
+    rpc.mockResolvedValue({ data: 1, error: null });
+    await syncGame('g1');
+    expect(rpc.mock.calls.map((c) => c[0])).toEqual(['append_game_events']);
+  });
+
+  it("stops and says why when HQ says this tablet is no longer the game's helper", async () => {
+    db.game.ownStream = 'helper:u1';
+    db.game.pairCode = '111111';
+    db.events = [{ id: 'h1', gameId: 'g1', stream: 'helper:u1', seq: 1 }] as unknown as GameEvent[];
+    rpc.mockResolvedValue({ data: null, error: { code: '42501', message: "You are no longer this game's helper" } });
+    await syncGame('g1');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(rpc.mock.calls).toHaveLength(1);
+    expect(currentSyncState('g1')).toEqual({ kind: 'refused', message: "You are no longer this game's helper" });
+    expect(syncLabel(currentSyncState('g1')!)).toBe("Not sent: You are no longer this game's helper");
+    expect(db.game.ackedSeq).toBe(0);
+  });
+
+  it('the recorder sends only the primary stream, not the copies of a helper\'s changes', async () => {
+    db.game.pairCode = '111111';
+    db.events = [
+      { id: 'p1', gameId: 'g1', stream: 'primary', seq: 1 },
+      { id: 'h1', gameId: 'g1', stream: 'helper:u1', seq: 1 },
+      { id: 'h2', gameId: 'g1', stream: 'helper:u1', seq: 2 },
+    ] as unknown as GameEvent[];
+    rpc.mockImplementation(async (_fn: string, args: { p_events?: GameEvent[] }) => ({ data: args.p_events?.at(-1)?.seq ?? 0, error: null }));
+    await syncGame('g1');
+    expect(rpc.mock.calls).toHaveLength(1);
+    expect(rpc.mock.calls[0]?.[1]).toMatchObject({ p_stream: 'primary' });
+    expect((rpc.mock.calls[0]?.[1].p_events as GameEvent[]).map((e) => e.id)).toEqual(['p1']);
+    expect(db.game.ackedSeq).toBe(1);
   });
 });

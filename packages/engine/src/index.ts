@@ -3,6 +3,7 @@ export { clockState, resumableEnd, setClockEvent, type ClockState } from './cloc
 export { fold } from './fold';
 export { findSeqGaps, type SeqGap } from './seq';
 export { liveEvents, type LiveEvent } from './corrections';
+export { isHelperStream, mergeStreams, streamCursors } from './streams';
 export {
   COURT,
   defaultAttackEnd,

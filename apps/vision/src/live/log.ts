@@ -1,12 +1,15 @@
-import type { GameEvent } from '@firstpass/schema';
+import { isHelperStream, mergeStreams } from '@firstpass/engine';
+import { HELPER_EVENT_TYPES, type GameEvent } from '@firstpass/schema';
 
 /*
- * The coach's copy of a game's primary stream. Events arrive twice over (the
- * Realtime broadcast and the catch-up reads), out of order and with holes when
- * a broadcast is missed. Because the tablet numbers the stream 1, 2, 3 with no
- * gaps, the log keeps every event by seq and shows only the unbroken run from
- * seq 1, so a missed event never silently changes a stat: the feed sees the
- * hole and reads the missing rows from the database.
+ * The coach's copy of a game's record: the primary stream, and the
+ * substitutions and corrections of a helper statistician on a stream of their
+ * own. Events arrive twice over (the Realtime broadcast and the catch-up
+ * reads), out of order and with holes when a broadcast is missed. Because
+ * each tablet numbers its stream 1, 2, 3 with no gaps, the log keeps every
+ * event by stream and seq and shows only the unbroken run from seq 1 of each,
+ * so a missed event never silently changes a stat: the feed sees the hole
+ * and reads the missing rows from the database.
  */
 
 /** A row of public.game_events, as PostgREST returns it. */
@@ -21,12 +24,19 @@ export interface EventRow {
 }
 
 const EVENT_TYPES = new Set(['period_start', 'clock_start', 'clock_stop', 'period_end', 'action', 'flag', 'lineup_change', 'correction']);
+const HELPER_TYPES: readonly string[] = HELPER_EVENT_TYPES;
+
+/** The primary stream, or a helper's stream carrying what a helper may record. */
+function counts(stream: unknown, type: unknown): boolean {
+  if (stream === 'primary') return true;
+  return typeof stream === 'string' && isHelperStream(stream) && typeof type === 'string' && HELPER_TYPES.includes(type);
+}
 
 function valid(e: Partial<GameEvent>): e is GameEvent {
   return (
     typeof e.id === 'string' &&
     typeof e.gameId === 'string' &&
-    e.stream === 'primary' &&
+    counts(e.stream, e.type) &&
     Number.isInteger(e.seq) &&
     (e.seq as number) > 0 &&
     typeof e.type === 'string' &&
@@ -38,7 +48,7 @@ function valid(e: Partial<GameEvent>): e is GameEvent {
   );
 }
 
-/** A database row as an event, or null if it is not a primary event this app understands. */
+/** A database row as an event, or null if it is not a primary or helper event this app understands. */
 export function fromRow(row: EventRow): GameEvent | null {
   const e = {
     id: row.id,
@@ -69,48 +79,72 @@ export function fromBroadcast(message: unknown): GameEvent | null {
 }
 
 export class LiveLog {
-  private readonly bySeq = new Map<number, GameEvent>();
-  private through = 0;
+  private readonly held = new Map<string, Map<number, GameEvent>>();
+  private readonly throughBy = new Map<string, number>();
   private ordered: GameEvent[] = [];
 
   constructor(readonly gameId: string) {}
 
-  /** Highest seq with every event before it held. */
+  /** Highest primary seq with every event before it held. */
   get unbrokenThrough(): number {
-    return this.through;
+    return this.throughBy.get('primary') ?? 0;
   }
 
-  /** Highest seq held, which is above `unbrokenThrough` while there is a hole. */
+  /** Highest primary seq held, which is above `unbrokenThrough` while there is a hole. */
   get highestSeq(): number {
     let max = 0;
-    for (const seq of this.bySeq.keys()) if (seq > max) max = seq;
+    for (const seq of this.held.get('primary')?.keys() ?? []) if (seq > max) max = seq;
     return max;
   }
 
-  get hasGap(): boolean {
-    return this.bySeq.size > this.through;
+  /** How far each helper stream is held with no hole, by stream. */
+  get helperCursors(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const [stream, through] of this.throughBy) if (stream !== 'primary') out[stream] = through;
+    return out;
   }
 
-  /** The unbroken run of events from seq 1, in order. Same array until it changes. */
+  /** An event of any stream is held beyond a hole. */
+  get hasGap(): boolean {
+    for (const [stream, events] of this.held) if (events.size > (this.throughBy.get(stream) ?? 0)) return true;
+    return false;
+  }
+
+  /**
+   * The game's record: the unbroken run of the primary stream from seq 1 with
+   * each helper's unbroken run merged in. Same array until it changes.
+   */
   get events(): readonly GameEvent[] {
     return this.ordered;
   }
 
   /**
-   * Adds events, ignoring ones already held, other games and other streams.
-   * Returns true when the unbroken run grew.
+   * Adds events, ignoring ones already held, other games and streams that
+   * don't count. Returns true when the record changed.
    */
   add(events: Iterable<GameEvent | null>): boolean {
+    const touched = new Set<string>();
     for (const e of events) {
-      if (!e || e.gameId !== this.gameId || e.stream !== 'primary' || this.bySeq.has(e.seq)) continue;
-      this.bySeq.set(e.seq, e);
+      if (!e || e.gameId !== this.gameId || !counts(e.stream, e.type)) continue;
+      let stream = this.held.get(e.stream);
+      if (!stream) this.held.set(e.stream, (stream = new Map()));
+      if (stream.has(e.seq)) continue;
+      stream.set(e.seq, e);
+      touched.add(e.stream);
     }
-    const before = this.through;
-    while (this.bySeq.has(this.through + 1)) this.through += 1;
-    if (this.through === before) return false;
-    const next = this.ordered.slice();
-    for (let s = before + 1; s <= this.through; s++) next.push(this.bySeq.get(s) as GameEvent);
-    this.ordered = next;
+    let grew = false;
+    for (const name of touched) {
+      const stream = this.held.get(name) as Map<number, GameEvent>;
+      const before = this.throughBy.get(name) ?? 0;
+      let through = before;
+      while (stream.has(through + 1)) through += 1;
+      this.throughBy.set(name, through);
+      if (through > before) grew = true;
+    }
+    if (!grew) return false;
+    const all: GameEvent[] = [];
+    for (const stream of this.held.values()) all.push(...stream.values());
+    this.ordered = mergeStreams(all);
     return true;
   }
 }

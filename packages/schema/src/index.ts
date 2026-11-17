@@ -2,15 +2,24 @@
  * Shared event model for Vantage, Vision and the database.
  *
  * Every game is an append-only log of events. Each stream has exactly one
- * writer: the primary statistician ("primary") or a shadow statistician
- * ("shadow:<userId>"). Within a stream, `seq` is assigned by the client and is
- * gapless, so a reader can always tell when it has missed an event.
+ * writer: the primary statistician ("primary"), a helper statistician
+ * ("helper:<userId>") or a shadow statistician ("shadow:<userId>"). Within a
+ * stream, `seq` is assigned by the client and is gapless, so a reader can
+ * always tell when it has missed an event.
+ *
+ * A helper records substitutions and corrections only, and they count: the
+ * game's record is the primary stream with every helper stream merged in
+ * (`mergeStreams` in @firstpass/engine). A shadow stream is a private second
+ * record for practice or comparison and never counts.
  *
  * Nothing is edited in place: Undo, Delete and Edit are themselves events
  * (`correction`) that point at the event they change.
  */
 
-export type StreamId = 'primary' | `shadow:${string}`;
+export type StreamId = 'primary' | `helper:${string}` | `shadow:${string}`;
+
+/** The only events a helper statistician records. HQ refuses anything else on a helper stream. */
+export const HELPER_EVENT_TYPES = ['lineup_change', 'correction'] as const;
 
 export interface EventEnvelope<TType extends string = string, TPayload = unknown> {
   /** UUIDv7, generated on the device that recorded the event. */
