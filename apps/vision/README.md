@@ -84,7 +84,9 @@ version and publishes it to Expo Hosting. The workflow runs only when pressed.
 - A game link opened while signed out goes to sign-in with `?next=`, and only
   a page on this site is accepted there.
 - The session lives in the browser's storage, as on any signed-in website.
-  Sign out is on every signed-in screen, signing out reloads the start page,
+  Sign out is on every signed-in screen and ends the session on this device
+  only (`scope: 'local'`), so it never signs the person out of HQ or Vantage;
+  signing out reloads the start page,
   a page brought back by the back button is loaded again, and the sign-in
   screen says not to use a shared computer.
 - To try it locally: `npx expo export --platform web --output-dir dist`, then

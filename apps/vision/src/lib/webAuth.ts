@@ -134,3 +134,17 @@ export async function completeWebSignIn(opts: {
   if (error) return { kind: 'failed', message: `${MESSAGES.failed} (${shortReason(error.message)})` };
   return { kind: 'signed-in', next: takeNext(opts.store) };
 }
+
+/**
+ * Sign-out ends this browser's or phone's session only. The club's HQ and
+ * Vantage use the same accounts, and Supabase's default ("global") would end
+ * the person's sessions there too, which the FirstPass conventions forbid:
+ * one product never signs a person out of another.
+ */
+export const SIGN_OUT_OPTIONS = { scope: 'local' } as const;
+
+export async function signOutHere(auth: {
+  signOut(options: typeof SIGN_OUT_OPTIONS): Promise<unknown>;
+}): Promise<void> {
+  await auth.signOut(SIGN_OUT_OPTIONS);
+}

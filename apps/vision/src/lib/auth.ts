@@ -4,7 +4,7 @@ import { maybeCompleteAuthSession, openAuthSessionAsync } from 'expo-web-browser
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { client, useClub } from './supabase';
-import { callbackUrl, rememberNext, type KeyValueStore } from './webAuth';
+import { callbackUrl, rememberNext, signOutHere, type KeyValueStore } from './webAuth';
 
 maybeCompleteAuthSession();
 
@@ -53,8 +53,10 @@ export async function signInWithGoogle(next = '/'): Promise<void> {
   if (exchanged.error) throw exchanged.error;
 }
 
+/** Signs out on this device only (see signOutHere). */
 export async function signOut(): Promise<void> {
-  await client()?.auth.signOut();
+  const supabase = client();
+  if (supabase) await signOutHere(supabase.auth);
   if (Platform.OS === 'web') {
     // A fresh load of the start page drops everything this page held in memory.
     window.location.replace('/');

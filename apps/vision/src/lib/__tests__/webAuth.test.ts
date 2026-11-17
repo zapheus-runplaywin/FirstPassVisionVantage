@@ -10,6 +10,8 @@ import {
   rememberNext,
   safeNext,
   shortReason,
+  signOutHere,
+  SIGN_OUT_OPTIONS,
   takeNext,
   type KeyValueStore,
 } from '../webAuth';
@@ -219,5 +221,15 @@ describe('shortReason', () => {
       store: memoryStore(),
     });
     expect(result).toEqual({ kind: 'failed', message: `${MESSAGES.failed} (PKCE code verifier not found in storage)` });
+  });
+});
+
+describe('signOutHere', () => {
+  it('signs out on this device only, never everywhere', async () => {
+    const signOut = vi.fn(async () => ({ error: null }));
+    await signOutHere({ signOut });
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(SIGN_OUT_OPTIONS.scope).toBe('local');
   });
 });
