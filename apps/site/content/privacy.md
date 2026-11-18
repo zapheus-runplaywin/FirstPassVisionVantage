@@ -1,12 +1,12 @@
 # FirstPass HQ privacy policy
 
-Last updated: [DATE PUBLISHED]
+Last updated: 18 November 2026
 
 FirstPass HQ is an app that netball clubs use to run the club: messages, attendance, injuries, Working With Children Checks and child safety. This policy explains what the app keeps about you, why, who can see it, how long it is kept, and how to have it deleted.
 
 ## Who we are
 
-FirstPass HQ is made and run by [OPERATOR NAME] ("FirstPass", "we"). You can reach us at [SUPPORT EMAIL].
+FirstPass HQ is made and run by Matthew Brown ("FirstPass", "we"). You can reach us at pivtmedia@gmail.com.
 
 Each club that uses FirstPass HQ decides who may join it and what it records, and may have its own privacy policy for its members. FirstPass runs the app and each club's database for the club. Questions about what your club records go to your club first. Questions about the app go to us.
 
@@ -14,7 +14,7 @@ Each club that uses FirstPass HQ decides who may join it and what it records, an
 
 Only what the club needs to run. Depending on your role, that is:
 
-- **Your account:** the email of the Google account you sign in with, your name and preferred name, your role, title, squads and teams, and, if it differs, the email you registered with PlayHQ.
+- **Your account:** the email of the Google or Apple account you sign in with (if you chose Apple's Hide My Email, the private address Apple gives us), the name Apple shares the first time you sign in with it, your name and preferred name, your role, title, squads and teams, and, if it differs, the email you registered with PlayHQ.
 - **Your date of birth,** to know whether the club's rules for children apply.
 - **Parent and guardian links** between children under 18 and their parents or guardians.
 - **Working With Children Check details** for adults who work with children: card number, name on the card, expiry, application receipts and exemptions.
@@ -51,10 +51,11 @@ Each club has its own database, separate from every other club, hosted by Supaba
 These services help us run the app:
 
 - **Supabase** hosts each club's database, files and sign-in.
-- **Google** signs you in when you choose Continue with Google. The app receives your Google account's email.
+- **Google** signs you in when you choose Continue with Google. The app receives your Google account's email and name, and a link to your Google profile picture, which the app never shows or uses.
+- **Apple** signs you in when you choose Continue with Apple on an iPhone or iPad. The app receives your email or a private Apple address, and your name the first time. When you delete your account, the app asks Apple to stop the app's access to your Apple account.
 - **Expo, Apple and Google** deliver notifications to your phone. Each notification's title and text (which can include a person's name, never injury details) and your phone's notification token pass through them.
 
-Google sign-in and the notification services are run from outside Australia, so your Google account's email at sign-in, and each notification's title, text and token, are handled by those companies outside Australia under their own privacy terms. Everything else stays in your club's database in Sydney.
+Google and Apple sign-in and the notification services are run from outside Australia, so your Google or Apple account's email and name at sign-in, and each notification's title, text and token, are handled by those companies outside Australia under their own privacy terms. The records your club keeps are stored in its database and files in Sydney.
 
 ## How long it is kept
 
@@ -78,14 +79,16 @@ Your account and profile are kept until you delete your account or the club remo
 
 ## Children
 
-Athletes under 18 can't use the app until the club links a verified parent or guardian to them. Parents see their child's records, give or withdraw consents, and get a copy of every message to or from their child.
+FirstPass HQ is not for children under 13. The join step turns away anyone under 13, and if we learn that a child under 13 has signed in, their sign-in can be deleted.
+
+We collect from a child only what is listed above for their role, only to run the club, and never for advertising or tracking. Athletes under 18 can't use the app until the club links a verified parent or guardian to them. Parents see their child's records, give or withdraw consents, and get a copy of every message to or from their child.
 
 ## Your choices
 
 - **See and correct your details** in the app under Your details.
 - **Turn off notifications** in Your details, or in your phone's settings.
 - **Delete your account** in the app. See [Delete your account](/delete-account) for what is deleted and what the club keeps.
-- **Ask for a copy** of what the club holds about you, or ask for a correction, through your club's admins or by writing to us at [SUPPORT EMAIL].
+- **Ask for a copy** of what the club holds about you, or ask for a correction, through your club's admins or by writing to us at pivtmedia@gmail.com.
 
 ## If something goes wrong
 
@@ -97,6 +100,6 @@ When this policy changes, we update the date at the top of this page.
 
 ## Contact and complaints
 
-Write to us at [SUPPORT EMAIL]. If you're not satisfied with our answer, you can complain to the Office of the Australian Information Commissioner at oaic.gov.au.
+Write to us at pivtmedia@gmail.com. If you're not satisfied with our answer, you can complain to the Office of the Australian Information Commissioner at oaic.gov.au.
 
 See also: [Support](/support) · [Delete your account](/delete-account)
