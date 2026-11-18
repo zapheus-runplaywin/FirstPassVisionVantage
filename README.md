@@ -46,7 +46,7 @@ Add an Expo package to an app with `pnpm --filter @firstpass/vantage exec expo i
     npm publish ./packs/firstpass-engine-0.1.0.tgz --access public --provenance=false
   ```
 
-  Change the versions to match the packages' `package.json`. Publish the schema before the engine, because the engine depends on it. Keep the `./` in front of `packs/`: without it, npm reads a missing tarball path as a GitHub repository and fails with "Permission denied (publickey)". npm's warning `Unknown project config "node-linker"` is harmless (that setting in `.npmrc` is for pnpm). Then on npmjs.com, in each package's settings, add a trusted publisher: GitHub Actions, repository `zapheus-runplaywin/FirstPassVisionVantage`, workflow `publish-packages.yml`.
+  Change the versions to match the packages' `package.json`. Publish the schema before the engine, because the engine depends on it. Keep the `./` in front of `packs/`: without it, npm reads a missing tarball path as a GitHub repository and fails with "Permission denied (publickey)". npm's warning `Unknown project config "node-linker"` is harmless (that setting in `.npmrc` is for pnpm). Then on npmjs.com, in each package's settings, add a trusted publisher: GitHub Actions, repository `zapheus-runplaywin/FirstPassVisionVantage`, workflow `publish-packages.yml`. Under **Allowed actions**, tick **npm publish**. The repository is private, so nothing is published with a provenance statement (npm refuses one from a private repository).
 
 ## PlayHQ client
 
