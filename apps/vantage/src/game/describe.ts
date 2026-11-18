@@ -1,6 +1,6 @@
 import { reboundLabel, zoneOf, type LiveEvent } from '@firstpass/engine';
 import type { GameConfig, Position } from '@firstpass/schema';
-import { shortName } from './useGame';
+import { shortName } from './names';
 
 /** One ribbon line in plain words, e.g. "Won it · Sam GD · intercept · centre third, near side". */
 export function describe(e: LiveEvent, config: GameConfig, lineup: Partial<Record<Position, string>>): string {

@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - plugins/*
 
 # Security fixes for packages that come in through other packages.
 # uuid: xcode (used by Expo's config plugins) still asks for uuid 7, which has

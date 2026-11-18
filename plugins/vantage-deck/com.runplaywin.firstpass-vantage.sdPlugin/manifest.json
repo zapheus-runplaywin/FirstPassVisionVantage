@@ -1,0 +1,44 @@
+{
+	"$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+	"Name": "FirstPass Vantage",
+	"Version": "0.1.0.0",
+	"Author": "PIVT",
+	"Description": "Turns a Stream Deck XL into the keys for FirstPass Vantage's game screen: who, what and the detail of each event, with undo, mark moment, the clock and end quarter. Put the Vantage key on all 32 keys; each one works out its job from where it sits.",
+	"Icon": "imgs/plugin/icon",
+	"Category": "FirstPass Vantage",
+	"CategoryIcon": "imgs/plugin/category",
+	"CodePath": "bin/plugin.js",
+	"SDKVersion": 3,
+	"Software": {
+		"MinimumVersion": "7.1"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "12"
+		}
+	],
+	"Nodejs": {
+		"Version": "24"
+	},
+	"UUID": "com.runplaywin.firstpass-vantage",
+	"Actions": [
+		{
+			"Name": "Vantage key",
+			"UUID": "com.runplaywin.firstpass-vantage.key",
+			"Icon": "imgs/actions/key/icon",
+			"Tooltip": "One of Vantage's 32 keys. Put it on every key of a Stream Deck XL; there is nothing to set.",
+			"Controllers": [
+				"Keypad"
+			],
+			"SupportedInMultiActions": false,
+			"UserTitleEnabled": false,
+			"States": [
+				{
+					"Image": "imgs/actions/key/key",
+					"ShowTitle": false
+				}
+			]
+		}
+	]
+}

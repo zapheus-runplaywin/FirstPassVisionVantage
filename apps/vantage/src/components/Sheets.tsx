@@ -254,6 +254,65 @@ export function SubsSheet({
   );
 }
 
+/**
+ * The recorder's control for a helper statistician: turn the helper on or
+ * off for this game, the code the helper types, and everything the helper
+ * has changed so far.
+ */
+export function HelperSheet({
+  on,
+  busy,
+  pairCode,
+  error,
+  notes,
+  onToggle,
+  onClose,
+}: {
+  on: boolean;
+  busy: boolean;
+  /** The game's pair code once the club has the game; null until then. */
+  pairCode: string | null;
+  error: string | null;
+  notes: readonly { id: string; text: string }[];
+  onToggle: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Sheet title="Helper" onClose={onClose}>
+      <Text style={s.muted}>
+        A second statistician can do the substitutions and fix mistakes while you record the play. They can{"'"}t record play, the clock or the quarters.
+        Their changes count straight away and show here as they arrive.
+      </Text>
+      {pairCode ? (
+        <>
+          <Btn label={busy ? 'Working…' : on ? 'Turn the helper off' : 'Turn the helper on'} tone={on ? 'warn' : 'primary'} disabled={busy} onPress={onToggle} />
+          {on ? (
+            <>
+              <Text style={sh.label}>The helper joins with this code</Text>
+              <Text style={sh.code}>
+                {pairCode.slice(0, 3)} {pairCode.slice(3)}
+              </Text>
+              <Text style={s.muted}>In Vantage on their own tablet or phone: Home, Help with a game. One helper at a time; a new one takes over.</Text>
+            </>
+          ) : (
+            <Text style={s.muted}>The helper is off. Nobody can change this game but you.</Text>
+          )}
+        </>
+      ) : (
+        <Text style={s.muted}>A helper needs the game to reach your club first: choose your club and sign in on the home screen, and wait for Synced.</Text>
+      )}
+      {error ? <Text style={sh.error}>{error}</Text> : null}
+      <Text style={sh.label}>What the helper changed</Text>
+      {notes.length === 0 ? <Text style={s.muted}>Nothing yet</Text> : null}
+      {[...notes].reverse().map((n) => (
+        <Text key={n.id} style={s.text}>
+          {n.text}
+        </Text>
+      ))}
+    </Sheet>
+  );
+}
+
 export function StatsSheet({
   state,
   events,
@@ -410,6 +469,7 @@ const sh = StyleSheet.create({
   th: { flex: 1, color: colors.textMuted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
   td: { flex: 1, color: colors.text, fontSize: 14, fontVariant: ['tabular-nums'] },
   n: { textAlign: 'right' },
+  code: { color: colors.selected, fontSize: 40, fontWeight: '800', letterSpacing: 4, fontVariant: ['tabular-nums'], textAlign: 'center' },
   bigClock: { color: colors.text, fontSize: 48, fontWeight: '700', fontVariant: ['tabular-nums'], textAlign: 'center', marginVertical: 8 },
   step: { minWidth: '30%', flexGrow: 1, minHeight: 56 },
   error: { color: colors.attention, fontSize: 14 },

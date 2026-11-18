@@ -4,21 +4,28 @@ import { colors } from '@firstpass/ui';
 import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Court } from '../../components/Court';
 import { Ribbon, WhatPanel, WhoPanel } from '../../components/Panels';
-import { ClockSheet, EditSheet, ExportSheet, StatsSheet, SubsSheet } from '../../components/Sheets';
+import { ClockSheet, EditSheet, ExportSheet, HelperSheet, StatsSheet, SubsSheet } from '../../components/Sheets';
 import { Btn, fmtClock, Panel, s, Seg } from '../../components/ui';
+import { deckKeys, deckPress, END_CONFIRM_MS } from '../../game/deck';
 import { describe } from '../../game/describe';
 import { emptyPending, type Pending } from '../../game/entry';
+import { helperNotes, unseenNotes } from '../../game/helperNotes';
 import { STARTING_LINEUP } from '../../game/newGame';
 import { useClock, useGame, type Game } from '../../game/useGame';
 import { getGame } from '../../lib/db';
+import { deckWanted, useDeck } from '../../lib/deck';
+import { setHelper, useRemote } from '../../lib/helper';
 import { syncLabel, useSync } from '../../lib/sync';
 
-type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' } | { kind: 'clock' };
+type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' } | { kind: 'clock' } | { kind: 'helper' };
+
+/** How long a note about a helper's change stays up before it clears itself. */
+const NOTE_MS = 12_000;
 
 /** Events the statistician entered and can see, edit or undo in the ribbon. */
 function ribbonEvents(events: LiveEvent[]): LiveEvent[] {
@@ -39,6 +46,16 @@ export default function GameScreen() {
       </SafeAreaView>
     );
   }
+  if (game.ownStream !== 'primary') {
+    // A game this tablet is helping with has its own screen.
+    return (
+      <SafeAreaView style={styles.screen}>
+        <Text style={s.text}>You are helping with this game, not recording it.</Text>
+        <Btn label="Open the helper screen" tone="primary" onPress={() => router.replace({ pathname: '/help/[id]', params: { id } })} />
+        <Btn label="Back" onPress={() => router.replace('/')} />
+      </SafeAreaView>
+    );
+  }
   return <Entry game={game} />;
 }
 
@@ -49,9 +66,51 @@ function Entry({ game }: { game: Game }) {
   // Phones in landscape: keep the top strip to one line so the court gets the height.
   const compact = width < 1000;
   const [pending, setPending] = useState<Pending | null>(null);
-  const sync = useSync(game.id, game.events.length);
+  const sync = useSync(game.id, game.ownCount);
   const pairCode = sync.kind === 'synced' || sync.kind === 'queued' ? getGame(game.id)?.pairCode : null;
   const [sheet, setSheet] = useState<SheetState | null>(null);
+
+  // The helper: a second statistician doing subs and corrections. While it is on, this tablet
+  // reads their changes every few seconds and says what each one was.
+  const [helperOn, setHelperOn] = useState(() => getGame(game.id)?.helperOn ?? false);
+  const [helperError, setHelperError] = useState<string | null>(null);
+  const [helperBusy, setHelperBusy] = useState(false);
+  useRemote(game.id, helperOn);
+  const notes = useMemo(() => helperNotes(game.events, config), [game.events, config]);
+  // Changes already on the tablet when the game was opened are not announced again.
+  const seen = useRef<Set<string> | null>(null);
+  if (!seen.current) seen.current = new Set(notes.map((n) => n.id));
+  const [, redraw] = useState(0);
+  const fresh = unseenNotes(notes, seen.current);
+  const dismissNotes = useCallback(() => {
+    for (const n of notes) seen.current?.add(n.id);
+    redraw((n) => n + 1);
+  }, [notes]);
+  const freshCount = fresh.length;
+  useEffect(() => {
+    if (!freshCount) return;
+    const t = setTimeout(dismissNotes, NOTE_MS);
+    return () => clearTimeout(t);
+  }, [freshCount, dismissNotes]);
+  const toggleHelper = () => {
+    setHelperBusy(true);
+    setHelperError(null);
+    setHelper(game.id, !helperOn)
+      .then(
+        () => setHelperOn(!helperOn),
+        (e: unknown) => setHelperError(e instanceof Error ? e.message : 'Could not change the helper'),
+      )
+      .finally(() => setHelperBusy(false));
+  };
+  const noteStrip = freshCount ? (
+    <Pressable accessibilityRole="button" accessibilityLabel="Helper changes, tap to clear" onPress={dismissNotes} style={styles.noteStrip}>
+      <Text style={styles.noteText} numberOfLines={2}>
+        {fresh[fresh.length - 1]?.text}
+        {freshCount > 1 ? `   (+${freshCount - 1} more, see Helper)` : ''}
+      </Text>
+      <Text style={styles.noteClear}>Tap to clear</Text>
+    </Pressable>
+  ) : null;
   const live = useMemo(() => liveEvents(game.events), [game.events]);
   // Who was in each position when each action happened, so names stay right after subs.
   const lineups = useMemo(() => lineupsAt(game.events), [game.events]);
@@ -121,7 +180,10 @@ function Entry({ game }: { game: Game }) {
   };
   const undo = () => {
     if (pending) return setPending(null);
-    const last = ribbonEvents(live).at(-1);
+    // Undo takes back the last thing entered on this tablet, never a helper's substitution.
+    const last = ribbonEvents(live)
+      .filter((e) => e.stream === game.ownStream)
+      .at(-1);
     if (last) correct({ target: last.id, op: 'delete' });
   };
   const flag = () => {
@@ -149,6 +211,59 @@ function Entry({ game }: { game: Game }) {
       void impactAsync(ImpactFeedbackStyle.Heavy);
     }
   }, [append, clock.period, clock.running, timeUp]);
+
+  // Stream Deck keys (game/deck.ts): the same Who, What and detail buttons as the screen, pressed
+  // on a Stream Deck XL beside the Mac. End quarter takes two presses, because a key is easier to
+  // hit by accident than a button on the screen.
+  const [deckOn] = useState(deckWanted);
+  const [endArmed, setEndArmed] = useState(false);
+  useEffect(() => {
+    if (!endArmed) return;
+    const t = setTimeout(() => setEndArmed(false), END_CONFIRM_MS);
+    return () => clearTimeout(t);
+  }, [endArmed]);
+  const keys = deckKeys({
+    pending,
+    state,
+    lineup,
+    names: { us: config.us, them: config.them },
+    period: clock.period,
+    clockText: fmtClock(clock.remainingMs),
+    running: clock.running,
+    timeUp,
+    inBreak: clock.inBreak,
+    endArmed,
+  });
+  const deck = useDeck(deckOn, keys, (id) => {
+    const press = deckPress(id, keys);
+    if (!press) return;
+    if (press.kind !== 'endQuarter') setEndArmed(false);
+    switch (press.kind) {
+      case 'pick':
+        return onPick(press.team, press.player);
+      case 'action':
+        return onAction(press.action);
+      case 'cause':
+        return onCause(press.cause);
+      case 'rebound':
+        return onRebound(press.rebound);
+      case 'rebounder':
+        return onRebounder(press.player);
+      case 'skip':
+        if (pending) commit(pending);
+        return;
+      case 'flag':
+        return flag();
+      case 'undo':
+        return undo();
+      case 'clock':
+        return startStop();
+      case 'endQuarter':
+        if (!endArmed) return setEndArmed(true);
+        setEndArmed(false);
+        return endQuarter();
+    }
+  });
 
   const say = (e: LiveEvent) => describe(e, config, lineups.get(e.id) ?? lineup);
   const openSheet = sheet ? (
@@ -201,13 +316,23 @@ function Entry({ game }: { game: Game }) {
         remainingMs={clock.inBreak ? undefined : clock.remainingMs}
         onClose={() => setSheet(null)}
       />
+    ) : sheet.kind === 'helper' ? (
+      <HelperSheet
+        on={helperOn}
+        busy={helperBusy}
+        pairCode={getGame(game.id)?.pairCode ?? null}
+        error={helperError}
+        notes={notes}
+        onToggle={toggleHelper}
+        onClose={() => setSheet(null)}
+      />
     ) : (
       <ExportSheet gameId={game.id} config={config} events={game.events} onClose={() => setSheet(null)} />
     )
   ) : null;
 
   if (clock.inBreak) {
-    return <BreakReview game={game} live={live} say={say} sheet={openSheet} onSheet={setSheet} />;
+    return <BreakReview game={game} live={live} say={say} sheet={openSheet} onSheet={setSheet} noteStrip={noteStrip} helperOn={helperOn} />;
   }
 
   const amberCount = game.amberIds.size;
@@ -245,15 +370,18 @@ function Entry({ game }: { game: Game }) {
           <Btn label={`${amberCount} to fill`} tone="selected" onPress={() => latestAmber && setSheet({ kind: 'edit', event: latestAmber })} style={styles.topBtn} />
         ) : null}
         <View style={{ flex: 1 }} />
+        {deck !== 'off' ? <Pill label="Stream Deck" value={deck === 'connected' ? 'on' : 'not found'} /> : null}
         {pairCode ? <Pill label="Pair code" value={`${pairCode.slice(0, 3)} ${pairCode.slice(3)}`} /> : null}
         {!compact || sync.kind === 'lease lost' || sync.kind === 'refused' || sync.kind === 'offline' ? (
           <Text numberOfLines={2} style={[s.muted, styles.syncText, (sync.kind === 'lease lost' || sync.kind === 'refused') && styles.warnText]}>
             {syncLabel(sync)}
           </Text>
         ) : null}
+        <Btn label={helperOn ? 'Helper on' : 'Helper'} tone={helperOn ? 'selected' : 'target'} onPress={() => setSheet({ kind: 'helper' })} style={styles.topBtn} />
         <Btn label="Stats" onPress={() => setSheet({ kind: 'stats' })} style={styles.topBtn} />
         <Btn label={compact ? 'End Q' : 'End quarter'} tone={timeUp ? 'primary' : 'target'} onPress={endQuarter} style={styles.topBtn} />
       </View>
+      {noteStrip}
       <View style={styles.main}>
         <View style={styles.left}>
           <Panel title="Where" hint={hint} style={styles.courtPanel}>
@@ -336,12 +464,17 @@ function BreakReview({
   say,
   sheet,
   onSheet,
+  noteStrip,
+  helperOn,
 }: {
   game: Game;
   live: LiveEvent[];
   say: (e: LiveEvent) => string;
   sheet: ReactNode;
   onSheet: (s: SheetState) => void;
+  /** What the helper just changed, if anything. */
+  noteStrip: ReactNode;
+  helperOn: boolean;
 }) {
   const { config, state, append } = game;
   const defaults = nextPeriodDefaults(state);
@@ -350,7 +483,15 @@ function BreakReview({
   const [mode, setMode] = useState<EntryMode>(state.mode);
   const fullTime = state.period >= QUARTERS;
   // Seconds from the first clock start, to find each issue in the game video.
-  const videoAt = useMemo(() => new Map(timingRows(config, game.events).map((r) => [r.seq, r.sinceStartS])), [config, game.events]);
+  // Issues are always about events recorded on this tablet, so the rows are looked up by the primary stream's own
+  // numbers: a helper's substitutions (numbered in their own stream) are left out, their corrections kept.
+  const videoAt = useMemo(
+    () =>
+      new Map(
+        timingRows(config, game.events.filter((e) => e.stream === 'primary' || e.type === 'correction')).map((r) => [r.seq, r.sinceStartS]),
+      ),
+    [config, game.events],
+  );
   const q = state.quarters[state.period];
   const actionsThisQuarter = live.filter((e) => e.type === 'action' && e.payload.period === state.period).length;
   const other = <T extends string>(v: T, a: T, b: T) => (v === a ? b : a);
@@ -366,6 +507,7 @@ function BreakReview({
       <View style={styles.breakWrap}>
         <ScrollView contentContainerStyle={styles.breakInner}>
           <Text style={s.h1}>{fullTime ? 'Full time' : `End of Q${state.period}`}</Text>
+          {noteStrip}
           <Panel>
             <Text style={styles.breakScore}>
               {config.us} {state.score.us} – {state.score.them} {config.them}
@@ -424,6 +566,7 @@ function BreakReview({
           <View style={styles.breakActions}>
             {!fullTime ? <Btn label="Start next quarter" tone="primary" big onPress={startNext} /> : null}
             <Btn label="Subs" onPress={() => onSheet({ kind: 'subs' })} />
+            <Btn label={helperOn ? 'Helper on' : 'Helper'} tone={helperOn ? 'selected' : 'target'} onPress={() => onSheet({ kind: 'helper' })} />
             <Btn label="Stats" onPress={() => onSheet({ kind: 'stats' })} />
             {resumeId ? <Btn label={`Back to Q${state.period}`} onPress={resume} /> : null}
             <Btn label="Export log" onPress={() => onSheet({ kind: 'export' })} />
@@ -451,6 +594,21 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     marginBottom: 8,
   },
+  noteStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#3a1a08',
+    borderColor: colors.attention,
+    borderWidth: 2,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+    minHeight: 48,
+  },
+  noteText: { color: colors.text, fontSize: 16, fontWeight: '700', flex: 1 },
+  noteClear: { color: colors.textMuted, fontSize: 13 },
   wordmark: { fontSize: 15, fontWeight: '800', fontStyle: 'italic' },
   q: { color: colors.text, fontSize: 18, fontWeight: '700' },
   clock: { color: colors.text, fontSize: 28, fontWeight: '700', fontVariant: ['tabular-nums'], minWidth: 84, textAlign: 'center' },

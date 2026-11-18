@@ -4,10 +4,12 @@ import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Btn, s } from '../components/ui';
-import { gameStatus, type GameStatus } from '@firstpass/engine';
+import { gameStatus, mergeStreams, type GameStatus } from '@firstpass/engine';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
 import { clubs } from '../lib/clubs';
 import { listGames, loadEvents, type SavedGame } from '../lib/db';
+import { deckWanted, setDeckWanted } from '../lib/deck';
+import { joinAsHelper } from '../lib/helper';
 import { chooseClub, leaveClub, useClub } from '../lib/supabase';
 
 export default function Home() {
@@ -21,7 +23,24 @@ export default function Home() {
     if (chooseClub(code)) setCodeError(null);
     else setCodeError('No club has that code. Check it with your club admin.');
   };
-  useFocusEffect(useCallback(() => setGames(listGames().map((g) => ({ ...g, status: gameStatus(g.config, loadEvents(g.id)) }))), []));
+  useFocusEffect(useCallback(() => setGames(listGames().map((g) => ({ ...g, status: gameStatus(g.config, mergeStreams(loadEvents(g.id))) }))), []));
+  const [helpCode, setHelpCode] = useState('');
+  const [helpError, setHelpError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [deck, setDeck] = useState(deckWanted);
+  const help = () => {
+    setJoining(true);
+    setHelpError(null);
+    joinAsHelper(helpCode)
+      .then(
+        (id) => {
+          setHelpCode('');
+          router.push({ pathname: '/help/[id]', params: { id } });
+        },
+        (e: unknown) => setHelpError(e instanceof Error ? e.message : 'Could not join the game'),
+      )
+      .finally(() => setJoining(false));
+  };
   const signIn = () =>
     signInWithGoogle().then(
       () => setSignInError(null),
@@ -70,12 +89,58 @@ export default function Home() {
           </View>
         ) : null}
         <Btn label="New game" tone="primary" big onPress={() => router.push('/setup')} style={styles.new} />
+        {club && session ? (
+          <View style={styles.help}>
+            <Text style={s.h2}>Help with a game</Text>
+            <Text style={s.muted}>
+              Do the substitutions and fix mistakes for a game someone else is recording. Ask them to turn the helper on (Helper, on their game screen) and
+              type the code it shows.
+            </Text>
+            <View style={styles.account}>
+              <TextInput
+                value={helpCode}
+                onChangeText={setHelpCode}
+                keyboardType="number-pad"
+                maxLength={7}
+                placeholder="Pair code"
+                placeholderTextColor={colors.textMuted}
+                style={styles.input}
+                onSubmitEditing={help}
+              />
+              <Btn label={joining ? 'Joining…' : 'Help with this game'} disabled={joining || helpCode.replace(/\D/g, '').length !== 6} onPress={help} />
+            </View>
+            {helpError ? <Text style={styles.error}>{helpError}</Text> : null}
+          </View>
+        ) : null}
+        <View style={styles.help}>
+          <Text style={s.h2}>Stream Deck</Text>
+          <Text style={s.muted}>
+            On a Mac with a 32-key Stream Deck XL and the FirstPass Vantage plugin, the keys do who, what and the detail while you tap where on the court.
+            Leave this off on a tablet or phone.
+          </Text>
+          <View style={styles.account}>
+            <Btn
+              label={deck ? 'Stream Deck keys are on' : 'Use Stream Deck keys'}
+              tone={deck ? 'selected' : 'target'}
+              onPress={() => {
+                setDeckWanted(!deck);
+                setDeck(!deck);
+              }}
+            />
+          </View>
+        </View>
         {games.length ? <Text style={s.h2}>Saved games</Text> : null}
         {games.map((g) => (
-          <Btn key={g.id} tone="target" onPress={() => router.push({ pathname: '/game/[id]', params: { id: g.id } })} style={styles.game}>
+          <Btn
+            key={g.id}
+            tone="target"
+            onPress={() => router.push({ pathname: g.ownStream === 'primary' ? '/game/[id]' : '/help/[id]', params: { id: g.id } })}
+            style={styles.game}
+          >
             <View style={styles.gameRow}>
               <Text style={styles.gameName}>
                 {g.config.us} v {g.config.them}
+                {g.ownStream === 'primary' ? '' : ' · helping'}
               </Text>
               <Text style={styles.gameStatus}>
                 {g.status.label} · {g.status.score.us}–{g.status.score.them}
@@ -94,6 +159,7 @@ const styles = StyleSheet.create({
   inner: { padding: 16, gap: 12, maxWidth: 900, width: '100%', alignSelf: 'center' },
   wordmark: { fontSize: 36, fontWeight: '800', fontStyle: 'italic' },
   new: { alignSelf: 'flex-start', minWidth: 240 },
+  help: { gap: 8 },
   game: { alignItems: 'stretch' },
   gameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   gameName: { color: colors.targetText, fontSize: 17, fontWeight: '700' },

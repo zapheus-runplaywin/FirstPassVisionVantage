@@ -27,6 +27,14 @@ jobs:
       - run: pnpm check
       - name: Test the npm packages as they would be published
         run: scripts/test-packages.sh
+      - name: Pack the Stream Deck plugin
+        run: pnpm --filter @firstpass/vantage-deck run validate && pnpm --filter @firstpass/vantage-deck run pack
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Stream Deck plugin
+          path: plugins/vantage-deck/dist/*.streamDeckPlugin
+          if-no-files-found: error
+          retention-days: 30
       - name: Bundle Vantage for Android
         working-directory: apps/vantage
         run: npx expo export --platform android --output-dir ../../dist/vantage

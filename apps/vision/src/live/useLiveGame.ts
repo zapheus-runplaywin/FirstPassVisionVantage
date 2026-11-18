@@ -11,7 +11,7 @@ export function useLiveGame(gameId: string): { game: GameListEntry | null | unde
   const [, bump] = useReducer((n: number) => n + 1, 0);
   const [game, setGame] = useState<GameListEntry | null | undefined>(undefined);
   const [gameError, setGameError] = useState<string | null>(null);
-  const feed = useMemo(() => new GameFeed({ gameId, fetchSince: (seq) => fetchEventsSince(gameId, seq), onChange: bump }), [gameId]);
+  const feed = useMemo(() => new GameFeed({ gameId, fetchSince: (seq, helper) => fetchEventsSince(gameId, seq, helper), onChange: bump }), [gameId]);
 
   useEffect(() => {
     let cancelled = false;

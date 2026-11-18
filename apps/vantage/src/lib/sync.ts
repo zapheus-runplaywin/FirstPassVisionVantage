@@ -16,6 +16,10 @@ import { uuidv7 } from './uuid';
  * it stops and shows HQ's reason; the next event or a return to the app
  * asks once more, in case the role has been given back. The statistician
  * never waits on it.
+ *
+ * A game sends its own stream: 'primary' from the tablet recording it, or
+ * the helper's stream ('helper:<id>') from a tablet helping with it. A
+ * helper never creates the game; HQ already has it.
  */
 
 export type SyncState =
@@ -67,8 +71,9 @@ export async function syncGame(gameId: string): Promise<void> {
     const { data } = await supabase.auth.getSession();
     if (!data.session) return publish(gameId, { kind: 'signed out' });
 
+    const helping = game.ownStream !== 'primary';
     let pairCode = game.pairCode;
-    if (!pairCode) {
+    if (!pairCode && !helping) {
       const created = await supabase.rpc('create_game', {
         p_id: game.id,
         p_config: game.config,
@@ -83,15 +88,15 @@ export async function syncGame(gameId: string): Promise<void> {
 
     let acked = game.ackedSeq;
     for (;;) {
-      const batch: GameEvent[] = loadUnsent(gameId, acked, BATCH);
+      const batch: GameEvent[] = loadUnsent(gameId, game.ownStream, acked, BATCH);
       if (batch.length === 0) break;
-      const res = await supabase.rpc('append_game_events', { p_game_id: gameId, p_stream: 'primary', p_events: batch });
+      const res = await supabase.rpc('append_game_events', { p_game_id: gameId, p_stream: game.ownStream, p_events: batch });
       if (res.error) throw res.error;
       const confirmed = res.data as number;
       if (confirmed <= acked) throw new Error('server did not advance');
       acked = confirmed;
       markSynced(gameId, acked, null);
-      publish(gameId, { kind: 'queued', count: loadUnsent(gameId, acked, BATCH).length });
+      publish(gameId, { kind: 'queued', count: loadUnsent(gameId, game.ownStream, acked, BATCH).length });
     }
     delays.delete(gameId);
     publish(gameId, { kind: 'synced' });
@@ -104,7 +109,7 @@ export async function syncGame(gameId: string): Promise<void> {
       delays.delete(gameId);
       return publish(gameId, problem);
     }
-    const count = loadUnsent(gameId, getGame(gameId)?.ackedSeq ?? 0, 10_000).length;
+    const count = loadUnsent(gameId, game.ownStream, getGame(gameId)?.ackedSeq ?? 0, 10_000).length;
     const prev = states.get(gameId);
     const since = prev?.kind === 'offline' ? prev.since : Date.now();
     publish(gameId, { kind: 'offline', count, since });

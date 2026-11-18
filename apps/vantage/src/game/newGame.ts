@@ -1,9 +1,9 @@
 import type { EntryMode, GameConfig, GameEvent, Position } from '@firstpass/schema';
 import { createGame } from '../lib/db';
 import { uuidv7 } from '../lib/uuid';
+import { STARTING_LINEUP } from './names';
 
-/** The detail on the lineup recorded at setup; Undo never removes it. */
-export const STARTING_LINEUP = 'Starting lineup';
+export { STARTING_LINEUP };
 
 /** Saves a new game with its first quarter and starting lineup, and returns its id. */
 export function startNewGame(
@@ -32,6 +32,6 @@ export function startNewGame(
       payload: { period: 1, clockMs: config.quarterMs, team: 'us', lineup, bench, detail: STARTING_LINEUP },
     },
   ];
-  createGame({ id, config, createdAt: recordedAt, ...club, pairCode: null, ackedSeq: 0 }, events);
+  createGame({ id, config, createdAt: recordedAt, ...club, pairCode: null, ackedSeq: 0, ownStream: 'primary', helperOn: false }, events);
   return id;
 }

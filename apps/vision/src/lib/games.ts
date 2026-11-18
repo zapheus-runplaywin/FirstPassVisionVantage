@@ -92,8 +92,13 @@ export async function followGame(gameId: string): Promise<string | null> {
   return game?.id ?? null;
 }
 
-/** Primary events after `afterSeq`, in order, reading in pages. */
-export async function fetchEventsSince(gameId: string, afterSeq: number): Promise<GameEvent[]> {
+/**
+ * Primary events after `afterSeq`, in order, reading in pages, then a helper
+ * statistician's substitutions and corrections beyond what is held (`helper`:
+ * how far each helper stream is held). A game has a few dozen helper events
+ * at most, so they are read in one go.
+ */
+export async function fetchEventsSince(gameId: string, afterSeq: number, helper: Record<string, number> = {}): Promise<GameEvent[]> {
   const supabase = need();
   const out: GameEvent[] = [];
   let after = afterSeq;
@@ -112,7 +117,22 @@ export async function fetchEventsSince(gameId: string, afterSeq: number): Promis
       const e = fromRow(r);
       if (e) out.push(e);
     }
-    if (rows.length < PAGE) return out;
+    if (rows.length < PAGE) break;
     after = rows[rows.length - 1].seq;
   }
+  const res = await supabase
+    .from('game_events')
+    .select('game_id, stream, seq, id, type, payload, recorded_at')
+    .eq('game_id', gameId)
+    .like('stream', 'helper:%')
+    .order('stream')
+    .order('seq')
+    .limit(PAGE);
+  if (res.error) throw res.error;
+  for (const r of (res.data ?? []) as EventRow[]) {
+    if (r.seq <= (helper[r.stream] ?? 0)) continue;
+    const e = fromRow(r);
+    if (e) out.push(e);
+  }
+  return out;
 }
