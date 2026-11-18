@@ -51,8 +51,8 @@ Each club has its own database, separate from every other club, hosted by Supaba
 These services help us run the app:
 
 - **Supabase** hosts each club's database, files and sign-in.
-- **Google** signs you in when you choose Continue with Google. The app receives your Google account's email and name.
-- **Apple** signs you in when you choose Sign in with Apple on an iPhone. The app receives your email or a private Apple address, and your name the first time. When you delete your account, the app asks Apple to stop the app's access to your Apple account.
+- **Google** signs you in when you choose Continue with Google. The app receives your Google account's email and name, and a link to your Google profile picture, which the app never shows or uses.
+- **Apple** signs you in when you choose Continue with Apple on an iPhone or iPad. The app receives your email or a private Apple address, and your name the first time. When you delete your account, the app asks Apple to stop the app's access to your Apple account.
 - **Expo, Apple and Google** deliver notifications to your phone. Each notification's title and text (which can include a person's name, never injury details) and your phone's notification token pass through them.
 
 Google and Apple sign-in and the notification services are run from outside Australia, so your Google or Apple account's email and name at sign-in, and each notification's title, text and token, are handled by those companies outside Australia under their own privacy terms. The records your club keeps are stored in its database and files in Sydney.

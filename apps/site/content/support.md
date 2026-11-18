@@ -5,7 +5,7 @@ FirstPass HQ is the app netball clubs use to run the club. Here is how to get he
 ## Getting into the app
 
 1. Open the app and enter your club's code. Your club gives you the code, or a link that fills it in.
-2. Tap Continue with Google and choose your Google account. On an iPhone you can tap Sign in with Apple instead.
+2. Tap Continue with Google and choose your Google account. On an iPhone or iPad you can tap Continue with Apple instead.
 3. The first time, tap Request to join and fill in your details. A club admin approves you and puts you in your squad or team.
 
 FirstPass HQ is for people 13 and over. If you are under 18, the app stays locked until the club links your parent or guardian to you. Share the link code the app shows you with them.
