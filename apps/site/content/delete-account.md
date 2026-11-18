@@ -9,6 +9,8 @@ You can delete your FirstPass HQ account at any time, in the app.
 3. Read what will be deleted, then tap **Delete my account**.
 4. Tap **Delete my account permanently** to confirm.
 
+If you signed in with Apple on an iPhone, Apple asks you to confirm once more. That also stops the app using your Apple sign-in; your Apple Account itself isn't changed.
+
 This can't be undone. If you belong to more than one club, this deletes your account at the club you're in only; delete each one separately.
 
 ## What is deleted
@@ -31,6 +33,6 @@ Now and then a club has to keep an account for a legal matter, or you're the clu
 
 ## If you can't sign in
 
-Ask your club's admins to remove your account, or write to us at [SUPPORT EMAIL] with your name and your club, from the email you sign in with. We check it's you, ask your club to remove the account, and reply within 14 days.
+Ask your club's admins to remove your account, or write to us at pivtmedia@gmail.com with your name and your club, from the email you sign in with. We check it's you, ask your club to remove the account, and reply within 14 days.
 
 See also: [Privacy policy](/privacy) · [Support](/support)
