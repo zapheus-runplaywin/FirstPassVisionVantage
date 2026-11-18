@@ -3,8 +3,9 @@
 # npm doesn't have yet: a pull request that changes a package bumps its version in package.json (and the
 # engine's ENGINE_VERSION) and adds a line to its CHANGELOG.md.
 # npm trusted publishing: npm trusts this workflow in this repository (set once on npmjs.com, in each
-# package's settings), so no npm token is stored anywhere; each version also gets a provenance statement
-# linking it to the commit and run that built it. npm only lets a package that already exists name a trusted
+# package's settings), so no npm token is stored anywhere. No provenance statement is published: npm only
+# accepts one from a public repository, and refuses the whole publish (422) when a private one asks for it, so
+# it is turned off here and in each package's publishConfig. npm only lets a package that already exists name a trusted
 # publisher, so a new package's first version is published by hand once (see README, "Shared packages").
 name: Publish packages
 
@@ -29,7 +30,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      # The OIDC token npm's trusted publishing checks (and the provenance statement).
+      # The OIDC token npm's trusted publishing checks.
       id-token: write
     steps:
       - uses: actions/checkout@v7
@@ -55,6 +56,6 @@ jobs:
               echo "@firstpass/$name $version is already on npm."
             else
               echo "Publishing @firstpass/$name $version."
-              npm publish "./packs/firstpass-$name-$version.tgz" --access public --provenance
+              npm publish "./packs/firstpass-$name-$version.tgz" --access public --provenance=false
             fi
           done
