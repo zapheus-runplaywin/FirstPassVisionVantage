@@ -1,9 +1,12 @@
 name: CI
 
+# Pull requests only, not main again after a merge, to save Actions minutes
+# (Matt, 20 November 2026): the run tests the pull request merged with main.
+# To check main, run it by hand (Actions > CI > Run workflow). To go back, add
+# `push: branches: [main]` again.
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
