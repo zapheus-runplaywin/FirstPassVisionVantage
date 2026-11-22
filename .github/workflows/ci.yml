@@ -1,11 +1,12 @@
 name: CI
 
-# Pull requests only, not main again after a merge, to save Actions minutes
-# (Matt, 20 November 2026): the run tests the pull request merged with main.
-# To check main, run it by hand (Actions > CI > Run workflow). To go back, add
-# `push: branches: [main]` again.
+# On pull requests and again on main after each merge. From 20 to 22 November
+# 2026 main was skipped to save Actions minutes; the repo is public since
+# 22 November, so minutes are free (Matt).
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
