@@ -1,6 +1,6 @@
 import type { GameConfig, GameEvent, Position } from '@firstpass/schema';
 import { liveEvents } from './corrections';
-import { applyEvent, initialState } from './game';
+import { applyEvent, initialState, type GameState } from './game';
 import { zoneOf } from './geometry';
 
 /**
@@ -59,6 +59,12 @@ export interface VideoMarkerOptions {
    */
   mayName?: (label: string) => boolean;
   /**
+   * The game's state before the first of these events, when they start part
+   * way through (after a break snapshot): who was on court, who had the ball.
+   * It is not changed. Left out, the events are the whole game.
+   */
+  from?: GameState;
+  /**
    * Moments marked somewhere else (FirstPass Studio's Mark moment key), in
    * the same form as a flag's payload, to go in the same file.
    */
@@ -84,7 +90,7 @@ export function videoMarkers(config: GameConfig, events: readonly GameEvent[], o
     if (Number.isFinite(atMs)) markers.push({ kind, atMs, name, note: note.filter(Boolean).join(' · '), colour: COLOUR_OF[kind], quarter });
   };
 
-  let state = initialState(config);
+  let state = options.from ? (JSON.parse(JSON.stringify(options.from)) as GameState) : initialState(config);
   for (const e of liveEvents(events)) {
     const atMs = Date.parse(e.recordedAt);
     const { period, clockMs } = e.payload;

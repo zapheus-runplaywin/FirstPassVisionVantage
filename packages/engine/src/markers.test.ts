@@ -1,5 +1,6 @@
 import type { ActionPayload, GameConfig, GameEvent } from '@firstpass/schema';
 import { describe, expect, it } from 'vitest';
+import { deriveGame } from './game';
 import {
   firstClockStart,
   MARKER_FORMATS,
@@ -110,6 +111,18 @@ describe('videoMarkers', () => {
     const marks = markers.filter((m) => m.kind === 'mark').map((m) => m.name);
     expect(marks).toEqual(['Marked moment · Q1 14:20', 'Marked moment · Q1 14:05', 'Marked moment']);
     expect(markers.map((m) => m.atMs)).toEqual([...markers.map((m) => m.atMs)].sort((a, b) => a - b));
+  });
+
+  it('starts from a state it is given, for events that begin part way through', () => {
+    const all = game();
+    const before = all.slice(0, 4);
+    const from = deriveGame(config, before);
+    const kept = JSON.stringify(from);
+    const rest = videoMarkers(config, all.slice(4), { from });
+    expect(rest[0]).toMatchObject({ name: 'Goal GS Ava Lee · Q1 14:53', note: 'Thunder · attacking third · from a centre pass' });
+    expect(JSON.stringify(from)).toBe(kept);
+    // Without it nobody is known to be on court and the centre pass is forgotten.
+    expect(videoMarkers(config, all.slice(4))[0]).toMatchObject({ name: 'Goal GS · Q1 14:53', note: 'Thunder · attacking third' });
   });
 
   it('has nothing for an empty game', () => {
