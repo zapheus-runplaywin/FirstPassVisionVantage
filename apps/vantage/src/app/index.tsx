@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppleButton, useAppleSignIn } from '../components/AppleButton';
 import { Btn, s } from '../components/ui';
+import { VenueSection } from '../components/VenueSection';
 import { gameStatus, mergeStreams, type GameStatus } from '@firstpass/engine';
 import { signInWithApple } from '../lib/apple';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
@@ -154,6 +155,7 @@ export default function Home() {
             />
           </View>
         </View>
+        <VenueSection />
         {games.length ? <Text style={s.h2}>Saved games</Text> : null}
         {games.map((g) => (
           <Btn

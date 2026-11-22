@@ -15,6 +15,7 @@ import { helperEvents } from '../../game/helperEvents';
 import { useClock, useGame, type Game } from '../../game/useGame';
 import { useRemote } from '../../lib/helper';
 import { syncLabel, useSync } from '../../lib/sync';
+import { useVenue, venueLabel } from '../../lib/venue';
 
 /*
  * The helper's screen. A second statistician follows a game being recorded
@@ -45,6 +46,7 @@ function Help({ game }: { game: Game }) {
   const { config, state, append } = game;
   const clock = useClock(game)!;
   const sync = useSync(game.id, game.ownCount);
+  const venue = venueLabel(useVenue(game.id, game.ownCount));
   const remote = useRemote(game.id, true);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const live = useMemo(() => liveEvents(game.events), [game.events]);
@@ -109,6 +111,7 @@ function Help({ game }: { game: Game }) {
         <View style={{ flex: 1 }} />
         <Text numberOfLines={2} style={[s.muted, styles.syncText, stopped && styles.warnText]}>
           {syncLabel(sync)}
+          {venue ? ` · ${venue}` : ''}
         </Text>
         <Btn label="Stats" onPress={() => setSheet({ kind: 'stats' })} style={styles.topBtn} />
         <Btn label="Home" tone="quiet" onPress={() => router.replace('/')} style={styles.topBtn} />

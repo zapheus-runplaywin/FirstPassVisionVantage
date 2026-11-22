@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, Style
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppleButton, useAppleSignIn } from '../components/AppleButton';
 import { Btn, ui } from '../components/ui';
+import { VenueSection } from '../components/VenueSection';
 import { signInWithApple } from '../lib/apple';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
 import { clubs, type ClubEntry } from '../lib/clubs';
@@ -224,6 +225,7 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
         }
         contentContainerStyle={styles.list}
       />
+      <VenueSection />
       <View style={styles.row}>
         <Text style={[ui.muted, styles.grow]} numberOfLines={1}>
           {club.name}

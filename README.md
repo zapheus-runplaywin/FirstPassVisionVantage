@@ -75,6 +75,8 @@ npx eas-cli build --profile preview --platform android
 
 Video markers (events as markers in a video editor): [docs/video-markers.md](docs/video-markers.md).
 
+The venue link (a game's events over the venue's own network, through FirstPass Studio): [docs/venue-link.md](docs/venue-link.md).
+
 - [Build plan](https://claude.ai/code/artifact/16d36552-7dab-4301-8280-ff02ce0f42c5)
 - [Architecture](https://claude.ai/code/artifact/dbe32d48-8bae-490b-bfab-aac7d8d27bc8)
 - [Vantage UI](https://claude.ai/code/artifact/3549aa2e-b657-4996-a019-a8abe8f8c632)

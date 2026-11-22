@@ -3,8 +3,10 @@ import { useEffect, useMemo, useReducer, useState } from 'react';
 import { AppState } from 'react-native';
 import { fetchEventsSince, followGame, loadGame, type GameListEntry } from '../lib/games';
 import { client } from '../lib/supabase';
+import { loadVenueLink, venueFetch } from '../lib/venue';
 import { GameFeed } from './feed';
 import { fromBroadcast } from './log';
+import { followVenue, type VenueFollow } from './venue';
 
 /** Follows one game: its row, then its events as they arrive. */
 export function useLiveGame(gameId: string): { game: GameListEntry | null | undefined; feed: GameFeed; gameError: string | null } {
@@ -44,11 +46,25 @@ export function useLiveGame(gameId: string): { game: GameListEntry | null | unde
           .on('broadcast', { event: 'event' }, (msg: { payload?: unknown }) => feed.receive(fromBroadcast(msg.payload)))
           .subscribe((status) => feed.setChannelStatus(status));
       });
+    // The venue link: when this phone is connected to a Studio, the game's events are read from it too.
+    let venue: VenueFollow | null = null;
+    void loadVenueLink().then((link) => {
+      if (cancelled || !link) return;
+      venue = followVenue({
+        link,
+        gameId,
+        after: () => feed.log.unbrokenThrough,
+        onEvents: (events) => feed.receiveVenue(events),
+        onLost: () => feed.venueLost(),
+        fetch: venueFetch,
+      });
+    });
     const appState = AppState.addEventListener('change', (s) => {
       if (s === 'active') void feed.refresh();
     });
     return () => {
       cancelled = true;
+      venue?.stop();
       feed.stop();
       appState.remove();
       if (channel) void supabase.removeChannel(channel);

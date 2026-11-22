@@ -82,6 +82,8 @@ export class LiveLog {
   private readonly held = new Map<string, Map<number, GameEvent>>();
   private readonly throughBy = new Map<string, number>();
   private ordered: GameEvent[] = [];
+  /** Events held only from the venue link so far, as "stream seq": the club has not sent its copy. */
+  private readonly unconfirmed = new Set<string>();
 
   constructor(readonly gameId: string) {}
 
@@ -121,18 +123,31 @@ export class LiveLog {
   /**
    * Adds events, ignoring ones already held, other games and streams that
    * don't count. Returns true when the record changed.
+   *
+   * `fromClub` is false for events read from Studio over the venue link
+   * (venue.ts), which the club's database has not confirmed. The club's copy
+   * always wins: when it holds a different event at a seq the venue link gave
+   * first, the club's replaces it. Between two copies from the club, the
+   * first is kept, as ever.
    */
-  add(events: Iterable<GameEvent | null>): boolean {
+  add(events: Iterable<GameEvent | null>, fromClub = true): boolean {
     const touched = new Set<string>();
+    let replaced = false;
     for (const e of events) {
       if (!e || e.gameId !== this.gameId || !counts(e.stream, e.type)) continue;
       let stream = this.held.get(e.stream);
       if (!stream) this.held.set(e.stream, (stream = new Map()));
-      if (stream.has(e.seq)) continue;
+      const key = `${e.stream} ${e.seq}`;
+      const had = stream.get(e.seq);
+      if (had) {
+        // Only the club's copy of an event so far held from the venue link changes anything.
+        if (!fromClub || !this.unconfirmed.delete(key) || had.id === e.id) continue;
+        replaced = true;
+      } else if (!fromClub) this.unconfirmed.add(key);
       stream.set(e.seq, e);
       touched.add(e.stream);
     }
-    let grew = false;
+    let grew = replaced;
     for (const name of touched) {
       const stream = this.held.get(name) as Map<number, GameEvent>;
       const before = this.throughBy.get(name) ?? 0;

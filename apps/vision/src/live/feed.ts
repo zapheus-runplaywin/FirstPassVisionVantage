@@ -39,6 +39,8 @@ export class GameFeed {
   lastReadAt: number | null = null;
   /** The last read's error, cleared by the next good read. */
   error: string | null = null;
+  /** When Studio last answered over the venue link (venue.ts), if this phone is connected to one. */
+  venueReadAt: number | null = null;
 
   private readonly now: () => number;
   private reading: Promise<void> | null = null;
@@ -69,6 +71,26 @@ export class GameFeed {
     if (this.stopped || !event) return;
     this.apply([event]);
     if (this.log.hasGap) void this.refresh();
+  }
+
+  /**
+   * Events read from Studio over the venue link, which may be ahead of the
+   * club's database. They show at once; the club's copy replaces any that
+   * differ when it arrives, and a hole is still filled from the club.
+   */
+  receiveVenue(events: readonly (GameEvent | null)[]): void {
+    if (this.stopped) return;
+    const before = this.venueReadAt;
+    this.venueReadAt = this.now();
+    if (!this.apply(events, false) && before === null) this.deps.onChange();
+    if (this.log.hasGap) void this.refresh();
+  }
+
+  /** Studio stopped answering over the venue link. */
+  venueLost(): void {
+    if (this.stopped || this.venueReadAt === null) return;
+    this.venueReadAt = null;
+    this.deps.onChange();
   }
 
   /** The Realtime channel's status, as subscribe() reports it. */
@@ -120,8 +142,8 @@ export class GameFeed {
   }
 
   /** Adds events and tells the screen when anything shows. */
-  private apply(events: GameEvent[]): boolean {
-    if (!this.log.add(events)) return false;
+  private apply(events: readonly (GameEvent | null)[], fromClub = true): boolean {
+    if (!this.log.add(events, fromClub)) return false;
     this.lastEventAt = this.now();
     this.deps.onChange();
     return true;
