@@ -174,6 +174,7 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
     <View style={styles.games}>
       <View style={styles.row}>
         <Text style={[ui.h1, styles.grow]}>Games</Text>
+        <Btn label="Season" tone="dim" onPress={() => router.push('/season')} style={styles.small} />
         <Btn label="Refresh" tone="dim" onPress={load} style={styles.small} />
       </View>
       {error ? <Text style={ui.error}>{error}</Text> : null}

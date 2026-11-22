@@ -3,6 +3,7 @@
 ## 0.2.1
 
 - Video markers: `videoMarkers(config, events)` gives the game's standing events as named, coloured markers at the moment each was recorded; `placeMarkers(markers, sync)` turns those moments into frames of a video from when the video started; `markersEdl`, `markersXml` and `markersList` write the file DaVinci Resolve, Adobe Premiere Pro or a person reads. `firstClockStart`, `videoStartFrom`, `parseVideoTime` and `parseTimecode` find the video's start from what a person types. A game's state is unchanged, so break snapshots made by 0.2.0 still read.
+- Season figures: `playerLines(config, events)` gives each of our players' figures for a game (time on court, shooting, feeds, gains, turnovers, penalties, rebounds, Net Points), and `seasonPlayers(games)` adds a player's games together over a season, matching names between games. `netPointsPer10` and `shootingPercent` are the rates.
 
 ## 0.2.0
 
