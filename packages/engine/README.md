@@ -15,6 +15,7 @@ const time = courtTime(events, config.quarterMs); // time on court by player, po
 - Players are keyed by the name recorded in the lineup (`lineup_change` events); actions record a position, and the engine credits whoever was in that position at the time.
 - `applyEvent(state, event)` folds one live event onto a state, such as a break snapshot's `state`. A correction can change an event from before the snapshot, though, so fold the whole log again with `deriveGame` once you have it.
 - A break snapshot in HQ records the `ENGINE_VERSION` that made it (`engineVersion`). If a snapshot's major version differs from yours, ignore its state and fold the events instead.
+- Video markers: `videoMarkers(config, events)` names every standing event at the moment it was recorded, `placeMarkers(markers, { videoStartMs, fps })` puts them on a video's frames, and `markerFile('edl' | 'xml' | 'list', config, placed)` writes the file for DaVinci Resolve, Premiere Pro or a person. `markersFromClockStart` does all three from how far into the video the first quarter starts. Pass `mayName` to leave out the names a file may not carry.
 
 Built as CommonJS (ES2022) with type files, so it loads with `require()` or `import` in Node 22 or newer.
 

@@ -2,7 +2,36 @@
 
 The coach's live view. A coach or manager picks their club, signs in with
 Google (the same account as FirstPass HQ), taps one of their team's games and
-follows it live.
+follows it live. The iPhone and iPad app also offers Sign in with Apple, as
+HQ does (`src/lib/apple.ts`); in a browser and on Android it is Google only,
+so a coach who joined HQ with Apple can't yet use Vision in a browser.
+
+After the game, **Report** at the top of the game screen shows the whole game
+on one page: each quarter, the shooters, time on court, rebounds and Net
+Points, from the same engine functions as Vantage's "Game so far"
+(`src/stats/report.ts`). A finished game opens on its report. The games list
+shows the last three days; **Earlier games** brings older ones, twenty at a
+time. **Print or save** on the report opens the browser's print box, where
+it can be printed or saved as a PDF, black on white; in the phone app the
+button is **Share** and sends the report as text (`src/stats/reportDoc.ts`,
+`src/lib/saveReport.ts`). Every copy carries a line saying it names players
+and is for the coaching team only (Matt asked for the button, 22 November
+2026).
+
+**Season** on the games list opens the season so far for a team: each
+athlete's figures added up over the team's finished games (games, time on
+court, shooting, gains, turnovers, Net Points and Net Points per 10 minutes),
+and, on tapping an athlete, each of their games in turn. It is worked out in
+the app from the same events as each game's report, with the engine's
+`seasonPlayers` (`src/lib/season.ts`, `src/stats/season.ts`,
+`src/app/season.tsx`), so nothing new is stored and the figures agree with
+the reports. It follows each game first, so HQ's rules decide what a coach or
+manager can read: their own team's games only. An athlete is matched between
+games by the name in the lineup, ignoring case and spacing, so a game with no
+lineup recorded adds nothing and a name spelt two ways shows as two athletes.
+It is for the coaching team and names players. This is the first step of the
+Pathway Passport idea (issue #12): one club, one team's games, no sharing
+outside the club and nothing for athletes or parents yet.
 
 How it gets the game:
 
@@ -92,3 +121,7 @@ version and publishes it to Expo Hosting. The workflow runs only when pressed.
 - To try it locally: `npx expo export --platform web --output-dir dist`, then
   `npx expo serve`. Sign-in only works from an address on the club's redirect
   list.
+
+## Video markers
+
+Under the game report, **Video markers** makes the same files as Vantage: for DaVinci Resolve, for Premiere Pro, or a plain list. In a browser the file downloads; in the phone app it goes to the share sheet as text. See [docs/video-markers.md](../../docs/video-markers.md).

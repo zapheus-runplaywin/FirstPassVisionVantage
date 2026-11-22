@@ -8,6 +8,8 @@ import { BreakView } from '../components/BreakView';
 import { ChangesTab } from '../components/ChangesTab';
 import { CourtTab } from '../components/CourtTab';
 import { OnCourtTab } from '../components/OnCourtTab';
+import { MarkersPanel } from '../components/MarkersPanel';
+import { ReportView } from '../components/ReportView';
 import { MiniCourt } from '../components/MiniCourt';
 import { OnCourtStrip } from '../components/OnCourtStrip';
 import { Tiles } from '../components/Tiles';
@@ -19,6 +21,9 @@ import { quarterLine, sayPoints } from '../stats/breakview';
 import { verdicts } from '../stats/changes';
 import { lossesThisQuarter, matchUps, onCourt } from '../stats/markers';
 import { buildModel } from '../stats/possessions';
+import { gameReport } from '../stats/report';
+import { reportHtml, reportText, reportTitle, type ReportHeading } from '../stats/reportDoc';
+import { saveReport } from '../lib/saveReport';
 import { tiles } from '../stats/tiles';
 import { freshness, scoreSummary, type Freshness, type ScoreSummary } from '../live/summary';
 import { useLiveGame, useNow } from '../live/useLiveGame';
@@ -77,7 +82,26 @@ function SignedInGame({ id }: { id: string }) {
   }, [events]);
   const alerts = useMemo(() => runAlerts(events), [events]);
   const { prefs, toggleStar, dismiss } = useCardPrefs(id);
-  const [tab, setTab] = useState<Tab>('live');
+  // A finished game opens on its report; a game being played opens on Live.
+  const [chosenTab, setTab] = useState<Tab | null>(null);
+  const tab: Tab = chosenTab ?? (game?.status === 'final' ? 'report' : 'live');
+  const report = useMemo(() => (game && tab === 'report' ? gameReport(game.config, events) : null), [game, tab, events]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const save = () => {
+    if (!game || !summary || !report) return;
+    const heading: ReportHeading = {
+      us: summary.names.us,
+      them: summary.names.them,
+      score: summary.score,
+      label: summary.label,
+      teamName: game.teamName,
+      date: new Date(game.createdAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+    };
+    setSaveError(null);
+    saveReport({ title: reportTitle(heading), text: reportText(heading, report), html: reportHtml(heading, report) }).catch((e: unknown) =>
+      setSaveError(e instanceof Error ? e.message : "Couldn't open the report to save."),
+    );
+  };
   // The break view opens by itself at each break; closing it keeps it closed for that break.
   const [closedBreak, setClosedBreak] = useState<string | null>(null);
 
@@ -104,17 +128,27 @@ function SignedInGame({ id }: { id: string }) {
   const top = live[0];
   const inBreak = summary.phase === 'break' || summary.phase === 'full time';
   const breakKey = `${summary.phase}:${summary.period}`;
-  const showBreak = inBreak && events.length > 0 && closedBreak !== breakKey;
+  // The report is read on its own: the break view stays out of its way.
+  const showBreak = inBreak && events.length > 0 && closedBreak !== breakKey && tab !== 'report';
 
   return (
     <SafeAreaView style={ui.screen}>
       <View style={styles.top}>
         <Btn label="‹ Games" tone="quiet" onPress={backToGames} style={styles.back} />
         <View style={styles.grow} />
-        {inBreak && !showBreak && events.length > 0 ? (
+        {inBreak && !showBreak && events.length > 0 && tab !== 'report' ? (
           <Btn label="Break view" tone="dim" onPress={() => setClosedBreak(null)} style={styles.breakBtn} />
         ) : null}
-        <ConnectionChip connection={feed.connection} fresh={fresh} />
+        {events.length > 0 ? (
+          <Btn
+            label="Report"
+            tone={tab === 'report' ? 'target' : 'dim'}
+            onPress={() => setTab(tab === 'report' ? 'live' : 'report')}
+            style={styles.breakBtn}
+          />
+        ) : null}
+        {/* A finished game has nothing live to follow, and the top row is short of room on a phone. */}
+        {summary.phase === 'full time' && fresh.kind === 'fresh' ? null : <ConnectionChip connection={feed.connection} fresh={fresh} />}
         {Platform.OS === 'web' ? <Btn label="Sign out" tone="quiet" onPress={() => void signOut()} style={styles.back} /> : null}
       </View>
       {fresh.kind !== 'fresh' ? <StaleBanner fresh={fresh} error={feed.error} /> : null}
@@ -122,6 +156,8 @@ function SignedInGame({ id }: { id: string }) {
         <Score summary={summary} />
         {events.length === 0 ? (
           <Text style={[ui.muted, styles.centerText]}>Waiting for the first stats from the statistician's tablet.</Text>
+        ) : tab === 'report' && report ? (
+          <ReportView report={report} fullTime={summary.phase === 'full time'} onSave={save} saveError={saveError} markers={<MarkersPanel config={game.config} events={events} />} />
         ) : tab === 'court' ? (
           <CourtTab model={glance.model} names={summary.names} />
         ) : tab === 'oncourt' ? (
@@ -189,9 +225,10 @@ function SignedInGame({ id }: { id: string }) {
   );
 }
 
-type Tab = 'live' | 'court' | 'oncourt' | 'changes' | 'alerts';
+/** 'report' has no place in the tab bar: the Report button at the top opens and closes it. */
+type Tab = 'live' | 'court' | 'oncourt' | 'changes' | 'alerts' | 'report';
 
-const TABS: readonly (readonly [Tab, string])[] = [
+const TABS: readonly (readonly [Exclude<Tab, 'report'>, string])[] = [
   ['live', 'Live'],
   ['court', 'Court'],
   ['oncourt', 'On court'],
@@ -296,7 +333,7 @@ const styles = StyleSheet.create({
   centerText: { textAlign: 'center' },
   pad: { padding: 24 },
   grow: { flex: 1 },
-  top: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingTop: 4 },
+  top: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', paddingHorizontal: 8, paddingTop: 4, rowGap: 4 },
   back: { minHeight: 44, paddingHorizontal: 8 },
   breakBtn: { minHeight: 40, paddingHorizontal: 12, marginRight: 8 },
   chip: {

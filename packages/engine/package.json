@@ -1,6 +1,6 @@
 {
   "name": "@firstpass/engine",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "FirstPass's stats engine: folds a game's events into the score, shooting, Net Points, court time and other live figures.",
   "license": "UNLICENSED",
   "author": "PIVT",

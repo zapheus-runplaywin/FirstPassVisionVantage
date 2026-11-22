@@ -6,7 +6,7 @@ Live netball stats. **FirstPass Vantage** is the statistician's tablet app for e
 
 | Path | What it is |
 | --- | --- |
-| `apps/vantage` | Expo tablet app for the statistician (Android first, then iPad), landscape |
+| `apps/vantage` | Expo tablet app for the statistician (Android first, then iPad and Mac), landscape, with keyboard shortcuts. See [its README](apps/vantage/README.md) |
 | `apps/vision` | Expo app for coaches: phone, tablet and web, portrait and landscape |
 | `apps/site` | FirstPass HQ's public pages for the app stores (privacy policy, support, delete my account), a static site on Expo Hosting |
 | `plugins/vantage-deck` | Stream Deck plugin: a 32-key Stream Deck XL as Vantage's who, what and detail keys, from a Mac. See [its README](plugins/vantage-deck/README.md) |
@@ -62,7 +62,7 @@ Builds run on Expo Application Services (EAS). `preview` makes an Android APK th
 
 From GitHub: **Actions → EAS build → Run workflow**, pick the app, platform and profile. The run summary links to the build on expo.dev, where the APK downloads when it finishes. It needs the repository secret `EXPO_TOKEN` (an Expo access token).
 
-For the test tablets, builds go to Google Play internal testing instead: see [docs/play-internal-testing.md](docs/play-internal-testing.md).
+For the test tablets, builds go to Google Play internal testing instead: see [docs/play-internal-testing.md](docs/play-internal-testing.md). For an iPad or a Mac, builds go to TestFlight: see [docs/testflight.md](docs/testflight.md).
 
 From a terminal:
 
@@ -72,6 +72,8 @@ npx eas-cli build --profile preview --platform android
 ```
 
 ## Design documents
+
+Video markers (events as markers in a video editor): [docs/video-markers.md](docs/video-markers.md).
 
 - [Build plan](https://claude.ai/code/artifact/16d36552-7dab-4301-8280-ff02ce0f42c5)
 - [Architecture](https://claude.ai/code/artifact/dbe32d48-8bae-490b-bfab-aac7d8d27bc8)

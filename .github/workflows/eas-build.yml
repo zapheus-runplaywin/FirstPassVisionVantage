@@ -21,7 +21,7 @@ on:
         options: [preview, development, production]
         default: preview
       submit:
-        description: Send to Google Play internal testing (Android, production profile only)
+        description: Send to testers (production profile only; Android to Google Play internal testing, iOS to TestFlight)
         type: boolean
         default: false
 
@@ -44,11 +44,23 @@ jobs:
         working-directory: apps/${{ inputs.app }}
         # Creates the Expo project on the first run and links to it after that.
         run: eas init --non-interactive --force
-      - name: Check the Play upload settings
-        if: inputs.submit && (inputs.profile != 'production' || inputs.platform != 'android')
+      - name: Check the upload settings
+        if: inputs.submit && inputs.profile != 'production'
         run: |
-          echo "::error::Sending to Google Play needs the production profile and the android platform."
+          echo "::error::Sending to Google Play or TestFlight needs the production profile."
           exit 1
+      - name: Check the app has its App Store Connect number
+        if: inputs.submit && inputs.platform != 'android'
+        working-directory: apps/${{ inputs.app }}
+        # Without it EAS stops to ask a question nobody can answer here. See docs/testflight.md.
+        run: |
+          node -e '
+            const id = require("./eas.json").submit?.production?.ios?.ascAppId;
+            if (!/^\d+$/.test(id ?? "")) {
+              console.log("::error::apps/${{ inputs.app }}/eas.json has no submit.production.ios.ascAppId yet. Make the first iOS build from a computer (docs/testflight.md), then add the number.");
+              process.exit(1);
+            }
+          '
       - name: Start the build
         working-directory: apps/${{ inputs.app }}
         run: |

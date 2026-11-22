@@ -14,11 +14,19 @@ function query() {
   return q;
 }
 
-vi.mock('./supabase', () => ({ client: () => ({ rpc, from: query }), useClub: () => null }));
+const authSignOut = vi.hoisted(() => vi.fn());
+vi.mock('./supabase', () => ({ client: () => ({ rpc, from: query, auth: { signOut: authSignOut } }), useClub: () => null }));
 vi.mock('expo-auth-session', () => ({ makeRedirectUri: () => '' }));
 vi.mock('expo-web-browser', () => ({ openAuthSessionAsync: vi.fn() }));
 
-const { loadRecorder, recorderMessage } = await import('./auth');
+const { loadRecorder, recorderMessage, signOut } = await import('./auth');
+
+describe('signOut', () => {
+  it('signs out on this device only, never out of HQ or Vision', async () => {
+    await signOut();
+    expect(authSignOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+});
 
 beforeEach(() => {
   rpc.mockReset();

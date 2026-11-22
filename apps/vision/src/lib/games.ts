@@ -51,6 +51,9 @@ function need() {
   return supabase;
 }
 
+/** How many earlier games each press of "Earlier games" brings. */
+export const EARLIER_PAGE = 20;
+
 /** Games from the last few days that this member may see, newest first. */
 export async function loadGames(now = Date.now()): Promise<GameListEntry[]> {
   const since = new Date(now - RECENT_DAYS * 24 * 3600 * 1000).toISOString();
@@ -62,6 +65,32 @@ export async function loadGames(now = Date.now()): Promise<GameListEntry[]> {
     .limit(30);
   if (res.error) throw res.error;
   return ((res.data ?? []) as unknown as GameRow[]).map(toEntry);
+}
+
+/**
+ * The next games back in time from `before` (the oldest game showing, or now
+ * when none is), newest first, for looking at a past game's report. `more`
+ * says whether there may be others further back.
+ */
+export async function loadEarlierGames(before: string): Promise<{ games: GameListEntry[]; more: boolean }> {
+  const res = await need()
+    .from('games')
+    .select('id, config, status, created_at, teams(name)')
+    .lt('created_at', before)
+    .order('created_at', { ascending: false })
+    .limit(EARLIER_PAGE + 1);
+  if (res.error) throw res.error;
+  const rows = ((res.data ?? []) as unknown as GameRow[]).map(toEntry);
+  return { games: rows.slice(0, EARLIER_PAGE), more: rows.length > EARLIER_PAGE };
+}
+
+/** When a game was started, for the list: the time for a recent game, the date for an older one. */
+export function gameWhen(createdAt: string, now = Date.now(), locale?: string): string {
+  const at = new Date(createdAt);
+  const recent = now - at.getTime() < RECENT_DAYS * 24 * 3600 * 1000;
+  return recent
+    ? at.toLocaleString(locale, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+    : at.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export async function loadGame(gameId: string): Promise<GameListEntry | null> {

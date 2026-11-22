@@ -10,7 +10,11 @@
     "backgroundColor": "#000000",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "au.pivt.firstpass.vision"
+      "bundleIdentifier": "au.pivt.firstpass.vision",
+      "usesAppleSignIn": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "au.pivt.firstpass.vision",
@@ -36,7 +40,9 @@
           "backgroundColor": "#0F172A"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

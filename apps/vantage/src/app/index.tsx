@@ -3,13 +3,16 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppleButton, useAppleSignIn } from '../components/AppleButton';
 import { Btn, s } from '../components/ui';
 import { gameStatus, mergeStreams, type GameStatus } from '@firstpass/engine';
+import { signInWithApple } from '../lib/apple';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
 import { clubs } from '../lib/clubs';
 import { listGames, loadEvents, type SavedGame } from '../lib/db';
 import { deckWanted, setDeckWanted } from '../lib/deck';
 import { joinAsHelper } from '../lib/helper';
+import { keyboardWanted, setKeyboardWanted } from '../lib/keyboard';
 import { chooseClub, leaveClub, useClub } from '../lib/supabase';
 
 export default function Home() {
@@ -28,6 +31,7 @@ export default function Home() {
   const [helpError, setHelpError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [deck, setDeck] = useState(deckWanted);
+  const [keyboard, setKeyboard] = useState(keyboardWanted);
   const help = () => {
     setJoining(true);
     setHelpError(null);
@@ -41,8 +45,9 @@ export default function Home() {
       )
       .finally(() => setJoining(false));
   };
-  const signIn = () =>
-    signInWithGoogle().then(
+  const apple = useAppleSignIn();
+  const signIn = (how: () => Promise<void> = signInWithGoogle) =>
+    how().then(
       () => setSignInError(null),
       (e: unknown) => setSignInError(e instanceof Error ? e.message : 'Sign-in failed'),
     );
@@ -82,7 +87,10 @@ export default function Home() {
                 <Btn label="Sign out" tone="quiet" onPress={() => void signOut()} />
               </>
             ) : (
-              <Btn label="Sign in with Google" onPress={() => void signIn()} />
+              <>
+                {apple ? <AppleButton onPress={() => void signIn(signInWithApple)} /> : null}
+                <Btn label="Sign in with Google" onPress={() => void signIn()} />
+              </>
             )}
             <Btn label="Change club" tone="quiet" onPress={leaveClub} />
             {signInError ? <Text style={styles.error}>{signInError}</Text> : null}
@@ -125,6 +133,23 @@ export default function Home() {
               onPress={() => {
                 setDeckWanted(!deck);
                 setDeck(!deck);
+              }}
+            />
+          </View>
+        </View>
+        <View style={styles.help}>
+          <Text style={s.h2}>Keyboard shortcuts</Text>
+          <Text style={s.muted}>
+            On a Mac, or a tablet with a keyboard attached, the keyboard does who, what and the detail while you tap or click where on the court. The four
+            rows of the keyboard are laid out as the Stream Deck is; Keys on the game screen shows what each one does. Leave this off without a keyboard.
+          </Text>
+          <View style={styles.account}>
+            <Btn
+              label={keyboard ? 'Keyboard shortcuts are on' : 'Use keyboard shortcuts'}
+              tone={keyboard ? 'selected' : 'target'}
+              onPress={() => {
+                setKeyboardWanted(!keyboard);
+                setKeyboard(!keyboard);
               }}
             />
           </View>
