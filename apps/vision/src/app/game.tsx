@@ -8,6 +8,7 @@ import { BreakView } from '../components/BreakView';
 import { ChangesTab } from '../components/ChangesTab';
 import { CourtTab } from '../components/CourtTab';
 import { OnCourtTab } from '../components/OnCourtTab';
+import { MarkersPanel } from '../components/MarkersPanel';
 import { ReportView } from '../components/ReportView';
 import { MiniCourt } from '../components/MiniCourt';
 import { OnCourtStrip } from '../components/OnCourtStrip';
@@ -156,7 +157,7 @@ function SignedInGame({ id }: { id: string }) {
         {events.length === 0 ? (
           <Text style={[ui.muted, styles.centerText]}>Waiting for the first stats from the statistician's tablet.</Text>
         ) : tab === 'report' && report ? (
-          <ReportView report={report} fullTime={summary.phase === 'full time'} onSave={save} saveError={saveError} />
+          <ReportView report={report} fullTime={summary.phase === 'full time'} onSave={save} saveError={saveError} markers={<MarkersPanel config={game.config} events={events} />} />
         ) : tab === 'court' ? (
           <CourtTab model={glance.model} names={summary.names} />
         ) : tab === 'oncourt' ? (

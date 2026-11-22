@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Video markers: `videoMarkers(config, events)` gives the game's standing events as named, coloured markers at the moment each was recorded; `placeMarkers(markers, sync)` turns those moments into frames of a video from when the video started; `markersEdl`, `markersXml` and `markersList` write the file DaVinci Resolve, Adobe Premiere Pro or a person reads. `firstClockStart`, `videoStartFrom`, `parseVideoTime` and `parseTimecode` find the video's start from what a person types. A game's state is unchanged, so break snapshots made by 0.2.0 still read.
+
 ## 0.2.0
 
 - Helper statisticians: `mergeStreams(events)` gives a game's record from everything held, the primary stream with each helper's substitutions and corrections merged in by the time they were recorded. `streamCursors(events)` says how far each stream is held without a gap, and `isHelperStream(stream)` names a helper's stream. Fold the result of `mergeStreams` instead of the primary stream alone.

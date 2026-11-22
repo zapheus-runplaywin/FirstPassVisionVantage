@@ -25,3 +25,7 @@ Backspace undoes too. Where it happened is still a tap or a click on the court. 
 A held key counts once: the same key counts again only after it has been quiet for 0.6 seconds, so a held Undo can't take back event after event.
 
 How it works: `src/game/keyboard.ts` maps a key to a deck key, and `src/game/deck.ts` decides what that key means. React Native can't hear a hardware key on an iPad or a Mac except through a text box, so `src/components/KeyCatcher.tsx` is a hidden one that never shows the on-screen keyboard.
+
+## Video markers
+
+**Export**, then **Video markers**, makes a file that puts a named marker on every event in DaVinci Resolve or Premiere Pro, or a plain list of times. Type how far into the video the first quarter starts, pick the frames a second and what to mark. See [docs/video-markers.md](../../docs/video-markers.md).

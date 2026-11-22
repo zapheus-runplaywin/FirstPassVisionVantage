@@ -19,6 +19,7 @@ import { isAvailableAsync, shareAsync } from 'expo-sharing';
 import { useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { shortName } from '../game/useGame';
+import { MarkersSection } from './MarkersSection';
 import { Btn, fmtClock, s } from './ui';
 
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -449,6 +450,7 @@ export function ExportSheet({ gameId, config, events, onClose }: { gameId: strin
         The timing table pastes into a spreadsheet with one row per event, corrections applied. since_start_s counts from when the clock was first started here, which
         should follow the live scoring clock: add it to the clock start&apos;s time in the video to find each event.
       </Text>
+      <MarkersSection config={config} events={events} />
       <Text style={sh.mono} numberOfLines={30}>
         {json}
       </Text>

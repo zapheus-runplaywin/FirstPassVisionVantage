@@ -1,4 +1,5 @@
 import { colors } from '@firstpass/ui';
+import type { ReactNode } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { REPORT_NOTE } from '../stats/reportDoc';
 import { Btn } from './ui';
@@ -10,12 +11,15 @@ export function ReportView({
   fullTime,
   onSave,
   saveError,
+  markers,
 }: {
   report: GameReport;
   fullTime: boolean;
   /** Opens the browser's print box (print, or save as a PDF) or the phone's share sheet. */
   onSave: () => void;
   saveError: string | null;
+  /** The video markers panel, under the tables. */
+  markers?: ReactNode;
 }) {
   return (
     <View style={s.wrap}>
@@ -50,6 +54,7 @@ export function ReportView({
         the lineup and substitutions to have been recorded.
       </Text>
       <Text style={s.hint}>{REPORT_NOTE}</Text>
+      {markers}
     </View>
   );
 }

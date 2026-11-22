@@ -106,3 +106,7 @@ version and publishes it to Expo Hosting. The workflow runs only when pressed.
 - To try it locally: `npx expo export --platform web --output-dir dist`, then
   `npx expo serve`. Sign-in only works from an address on the club's redirect
   list.
+
+## Video markers
+
+Under the game report, **Video markers** makes the same files as Vantage: for DaVinci Resolve, for Premiere Pro, or a plain list. In a browser the file downloads; in the phone app it goes to the share sheet as text. See [docs/video-markers.md](../../docs/video-markers.md).
