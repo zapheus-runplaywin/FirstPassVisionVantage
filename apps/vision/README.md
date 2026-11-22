@@ -11,8 +11,12 @@ on one page: each quarter, the shooters, time on court, rebounds and Net
 Points, from the same engine functions as Vantage's "Game so far"
 (`src/stats/report.ts`). A finished game opens on its report. The games list
 shows the last three days; **Earlier games** brings older ones, twenty at a
-time. The report stays on the screen: there is no export or share button,
-because stats stay with coaches, managers, statisticians and admins.
+time. **Print or save** on the report opens the browser's print box, where
+it can be printed or saved as a PDF, black on white; in the phone app the
+button is **Share** and sends the report as text (`src/stats/reportDoc.ts`,
+`src/lib/saveReport.ts`). Every copy carries a line saying it names players
+and is for the coaching team only (Matt asked for the button, 22 November
+2026).
 
 How it gets the game:
 

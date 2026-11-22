@@ -21,6 +21,8 @@ import { verdicts } from '../stats/changes';
 import { lossesThisQuarter, matchUps, onCourt } from '../stats/markers';
 import { buildModel } from '../stats/possessions';
 import { gameReport } from '../stats/report';
+import { reportHtml, reportText, reportTitle, type ReportHeading } from '../stats/reportDoc';
+import { saveReport } from '../lib/saveReport';
 import { tiles } from '../stats/tiles';
 import { freshness, scoreSummary, type Freshness, type ScoreSummary } from '../live/summary';
 import { useLiveGame, useNow } from '../live/useLiveGame';
@@ -83,6 +85,22 @@ function SignedInGame({ id }: { id: string }) {
   const [chosenTab, setTab] = useState<Tab | null>(null);
   const tab: Tab = chosenTab ?? (game?.status === 'final' ? 'report' : 'live');
   const report = useMemo(() => (game && tab === 'report' ? gameReport(game.config, events) : null), [game, tab, events]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const save = () => {
+    if (!game || !summary || !report) return;
+    const heading: ReportHeading = {
+      us: summary.names.us,
+      them: summary.names.them,
+      score: summary.score,
+      label: summary.label,
+      teamName: game.teamName,
+      date: new Date(game.createdAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+    };
+    setSaveError(null);
+    saveReport({ title: reportTitle(heading), text: reportText(heading, report), html: reportHtml(heading, report) }).catch((e: unknown) =>
+      setSaveError(e instanceof Error ? e.message : "Couldn't open the report to save."),
+    );
+  };
   // The break view opens by itself at each break; closing it keeps it closed for that break.
   const [closedBreak, setClosedBreak] = useState<string | null>(null);
 
@@ -138,7 +156,7 @@ function SignedInGame({ id }: { id: string }) {
         {events.length === 0 ? (
           <Text style={[ui.muted, styles.centerText]}>Waiting for the first stats from the statistician's tablet.</Text>
         ) : tab === 'report' && report ? (
-          <ReportView report={report} fullTime={summary.phase === 'full time'} />
+          <ReportView report={report} fullTime={summary.phase === 'full time'} onSave={save} saveError={saveError} />
         ) : tab === 'court' ? (
           <CourtTab model={glance.model} names={summary.names} />
         ) : tab === 'oncourt' ? (
