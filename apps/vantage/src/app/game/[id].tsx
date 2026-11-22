@@ -8,21 +8,25 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Court } from '../../components/Court';
+import { KeyCatcher } from '../../components/KeyCatcher';
+import { KeysSheet } from '../../components/KeysSheet';
 import { Ribbon, WhatPanel, WhoPanel } from '../../components/Panels';
 import { ClockSheet, EditSheet, ExportSheet, HelperSheet, StatsSheet, SubsSheet } from '../../components/Sheets';
 import { Btn, fmtClock, Panel, s, Seg } from '../../components/ui';
 import { deckKeys, deckPress, END_CONFIRM_MS } from '../../game/deck';
 import { describe } from '../../game/describe';
 import { emptyPending, type Pending } from '../../game/entry';
+import { keyboardKeyId } from '../../game/keyboard';
 import { helperNotes, unseenNotes } from '../../game/helperNotes';
 import { STARTING_LINEUP } from '../../game/newGame';
 import { useClock, useGame, type Game } from '../../game/useGame';
 import { getGame } from '../../lib/db';
 import { deckWanted, useDeck } from '../../lib/deck';
 import { setHelper, useRemote } from '../../lib/helper';
+import { keyboardWanted } from '../../lib/keyboard';
 import { syncLabel, useSync } from '../../lib/sync';
 
-type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' } | { kind: 'clock' } | { kind: 'helper' };
+type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' } | { kind: 'clock' } | { kind: 'helper' } | { kind: 'keys' };
 
 /** How long a note about a helper's change stays up before it clears itself. */
 const NOTE_MS = 12_000;
@@ -234,7 +238,10 @@ function Entry({ game }: { game: Game }) {
     inBreak: clock.inBreak,
     endArmed,
   });
-  const deck = useDeck(deckOn, keys, (id) => {
+  // Keyboard shortcuts (game/keyboard.ts) press the same keys: the keyboard's four rows are the
+  // deck's four rows.
+  const [keyboardOn] = useState(keyboardWanted);
+  const pressKey = (id: string) => {
     const press = deckPress(id, keys);
     if (!press) return;
     if (press.kind !== 'endQuarter') setEndArmed(false);
@@ -263,7 +270,17 @@ function Entry({ game }: { game: Game }) {
         setEndArmed(false);
         return endQuarter();
     }
-  });
+  };
+  const deck = useDeck(deckOn, keys, pressKey);
+  const keyCatcher = keyboardOn ? (
+    <KeyCatcher
+      active={!sheet || sheet.kind === 'keys'}
+      onKey={(typed) => {
+        const id = keyboardKeyId(typed, keys);
+        if (id) pressKey(id);
+      }}
+    />
+  ) : null;
 
   const say = (e: LiveEvent) => describe(e, config, lineups.get(e.id) ?? lineup);
   const openSheet = sheet ? (
@@ -316,6 +333,8 @@ function Entry({ game }: { game: Game }) {
         remainingMs={clock.inBreak ? undefined : clock.remainingMs}
         onClose={() => setSheet(null)}
       />
+    ) : sheet.kind === 'keys' ? (
+      <KeysSheet keys={keys} onClose={() => setSheet(null)} />
     ) : sheet.kind === 'helper' ? (
       <HelperSheet
         on={helperOn}
@@ -371,6 +390,7 @@ function Entry({ game }: { game: Game }) {
         ) : null}
         <View style={{ flex: 1 }} />
         {deck !== 'off' ? <Pill label="Stream Deck" value={deck === 'connected' ? 'on' : 'not found'} /> : null}
+        {keyboardOn ? <Btn label="Keys" tone={sheet?.kind === 'keys' ? 'selected' : 'target'} onPress={() => setSheet(sheet?.kind === 'keys' ? null : { kind: 'keys' })} style={styles.topBtn} /> : null}
         {pairCode ? <Pill label="Pair code" value={`${pairCode.slice(0, 3)} ${pairCode.slice(3)}`} /> : null}
         {!compact || sync.kind === 'lease lost' || sync.kind === 'refused' || sync.kind === 'offline' ? (
           <Text numberOfLines={2} style={[s.muted, styles.syncText, (sync.kind === 'lease lost' || sync.kind === 'refused') && styles.warnText]}>
@@ -429,6 +449,7 @@ function Entry({ game }: { game: Game }) {
           {openSheet}
         </View>
       </View>
+      {keyCatcher}
     </SafeAreaView>
   );
 }

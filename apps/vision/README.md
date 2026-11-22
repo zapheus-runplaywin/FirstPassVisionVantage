@@ -2,7 +2,9 @@
 
 The coach's live view. A coach or manager picks their club, signs in with
 Google (the same account as FirstPass HQ), taps one of their team's games and
-follows it live.
+follows it live. The iPhone and iPad app also offers Sign in with Apple, as
+HQ does (`src/lib/apple.ts`); in a browser and on Android it is Google only,
+so a coach who joined HQ with Apple can't yet use Vision in a browser.
 
 How it gets the game:
 

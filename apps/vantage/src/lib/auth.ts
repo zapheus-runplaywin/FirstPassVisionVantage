@@ -23,8 +23,12 @@ export async function signInWithGoogle(): Promise<void> {
   if (exchanged.error) throw exchanged.error;
 }
 
+/**
+ * Signs out on this device only. HQ and Vision use the same accounts, and
+ * Supabase's default ("global") would sign the person out of those too.
+ */
 export async function signOut(): Promise<void> {
-  await client()?.auth.signOut();
+  await client()?.auth.signOut({ scope: 'local' });
 }
 
 /** The chosen club's session, kept in step with sign-in, token refresh and club changes. */

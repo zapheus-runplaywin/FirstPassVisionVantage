@@ -12,6 +12,7 @@ import { clubs } from '../lib/clubs';
 import { listGames, loadEvents, type SavedGame } from '../lib/db';
 import { deckWanted, setDeckWanted } from '../lib/deck';
 import { joinAsHelper } from '../lib/helper';
+import { keyboardWanted, setKeyboardWanted } from '../lib/keyboard';
 import { chooseClub, leaveClub, useClub } from '../lib/supabase';
 
 export default function Home() {
@@ -30,6 +31,7 @@ export default function Home() {
   const [helpError, setHelpError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [deck, setDeck] = useState(deckWanted);
+  const [keyboard, setKeyboard] = useState(keyboardWanted);
   const help = () => {
     setJoining(true);
     setHelpError(null);
@@ -131,6 +133,23 @@ export default function Home() {
               onPress={() => {
                 setDeckWanted(!deck);
                 setDeck(!deck);
+              }}
+            />
+          </View>
+        </View>
+        <View style={styles.help}>
+          <Text style={s.h2}>Keyboard shortcuts</Text>
+          <Text style={s.muted}>
+            On a Mac, or a tablet with a keyboard attached, the keyboard does who, what and the detail while you tap or click where on the court. The four
+            rows of the keyboard are laid out as the Stream Deck is; Keys on the game screen shows what each one does. Leave this off without a keyboard.
+          </Text>
+          <View style={styles.account}>
+            <Btn
+              label={keyboard ? 'Keyboard shortcuts are on' : 'Use keyboard shortcuts'}
+              tone={keyboard ? 'selected' : 'target'}
+              onPress={() => {
+                setKeyboardWanted(!keyboard);
+                setKeyboard(!keyboard);
               }}
             />
           </View>
