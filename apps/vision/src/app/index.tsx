@@ -165,7 +165,7 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
             <Text style={ui.muted}>
               No games for your teams in the last few days. When your statistician starts one in Vantage it shows here.
             </Text>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <Pressable

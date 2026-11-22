@@ -1,7 +1,7 @@
 import { COURT } from '@firstpass/engine';
 import type { CourtEnd, CourtPoint } from '@firstpass/schema';
 import { colors } from '@firstpass/ui';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import { Pressable, View } from 'react-native';
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 
@@ -12,7 +12,7 @@ const R = (COURT.circleRadiusM / COURT.lengthM) * W;
 /** The court as the statistician sees it. Taps report fractions of its width and height. */
 export function Court({ attackEnd, dot, onTap }: { attackEnd: CourtEnd; dot: CourtPoint | null; onTap: (screen: CourtPoint) => void }) {
   const [box, setBox] = useState({ w: 0, h: 0 });
-  const ref = useRef<View>(null);
+  const ref = useRef<ComponentRef<typeof Pressable>>(null);
   // Keep the court's 2:1 shape inside whatever space the layout gives it.
   const width = Math.min(box.w, box.h * 2);
   const height = width / 2;

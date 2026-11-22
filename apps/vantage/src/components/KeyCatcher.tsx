@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ComponentRef } from 'react';
 import { StyleSheet, TextInput } from 'react-native';
 import { BOX_LIMIT, SENTINEL, makeRepeatGuard, readTyped, type Typed } from '../game/keyboard';
 
@@ -13,7 +13,7 @@ import { BOX_LIMIT, SENTINEL, makeRepeatGuard, readTyped, type Typed } from '../
  * `active` goes false and it lets go.
  */
 export function KeyCatcher({ active, onKey }: { active: boolean; onKey: (typed: Typed) => void }) {
-  const input = useRef<TextInput>(null);
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
   const fresh = useRef(makeRepeatGuard());
   /** What the box held after its last change. */
   const held = useRef(SENTINEL);

@@ -2,7 +2,7 @@
 
 Vantage runs on an iPad, and on a Mac with Apple silicon as the iPad app. The Mac is what the [Stream Deck keys](../plugins/vantage-deck/README.md) need, and a Mac's keyboard gives the [keyboard shortcuts](../apps/vantage/README.md#keyboard-shortcuts). Both get the app from TestFlight. It needs the paid Apple Developer account that FirstPass HQ already uses.
 
-The store id is `au.pivt.firstpass.vantage` (`apps/vantage/app.json`). On an iPad the app fills the screen and stays in landscape (`ios.requireFullScreen`).
+The store id is `au.pivt.firstpass.vantage` (`apps/vantage/app.json`). On an iPad the app asks to fill the screen and stay in landscape (`ios.requireFullScreen`). Expo's SDK 58 notes say iOS 27 no longer lets an app refuse resizing, so on an iPad with iOS 27 the window may still turn or resize; check this on the first build.
 
 ## One-time setup
 
