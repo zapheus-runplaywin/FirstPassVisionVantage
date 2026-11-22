@@ -6,6 +6,14 @@ follows it live. The iPhone and iPad app also offers Sign in with Apple, as
 HQ does (`src/lib/apple.ts`); in a browser and on Android it is Google only,
 so a coach who joined HQ with Apple can't yet use Vision in a browser.
 
+After the game, **Report** at the top of the game screen shows the whole game
+on one page: each quarter, the shooters, time on court, rebounds and Net
+Points, from the same engine functions as Vantage's "Game so far"
+(`src/stats/report.ts`). A finished game opens on its report. The games list
+shows the last three days; **Earlier games** brings older ones, twenty at a
+time. The report stays on the screen: there is no export or share button,
+because stats stay with coaches, managers, statisticians and admins.
+
 How it gets the game:
 
 - `src/lib/games.ts` lists recent games the member may see, follows the

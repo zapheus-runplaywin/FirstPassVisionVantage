@@ -8,7 +8,7 @@ import { Btn, ui } from '../components/ui';
 import { signInWithApple } from '../lib/apple';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
 import { clubs, type ClubEntry } from '../lib/clubs';
-import { followGame, loadGames, type GameListEntry } from '../lib/games';
+import { followGame, gameWhen, loadEarlierGames, loadGames, type GameListEntry } from '../lib/games';
 import { chooseClub, leaveClub, useClub } from '../lib/supabase';
 import { safeNext } from '../lib/webAuth';
 
@@ -117,11 +117,17 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [opening, setOpening] = useState<string | null>(null);
+  // Games from before the last few days, brought in a page at a time for their reports.
+  const [earlier, setEarlier] = useState<GameListEntry[]>([]);
+  const [more, setMore] = useState(true);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setGames(await loadGames());
+      setEarlier([]);
+      setMore(true);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -133,6 +139,21 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const shown = [...(games ?? []), ...earlier];
+  const loadEarlier = async () => {
+    setLoadingEarlier(true);
+    try {
+      const page = await loadEarlierGames(shown.at(-1)?.createdAt ?? new Date().toISOString());
+      setEarlier((held) => [...held, ...page.games]);
+      setMore(page.more);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoadingEarlier(false);
+    }
+  };
 
   /** Follows the game by its id, then opens it. */
   const open = async (gameId: string) => {
@@ -157,13 +178,14 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
       </View>
       {error ? <Text style={ui.error}>{error}</Text> : null}
       <FlatList
-        data={games ?? []}
+        data={shown}
         keyExtractor={(g) => g.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.text} />}
         ListEmptyComponent={
           games ? (
             <Text style={ui.muted}>
-              No games for your teams in the last few days. When your statistician starts one in Vantage it shows here.
+              No games for your teams in the last few days. When your statistician starts one in Vantage it shows here. Earlier games has the ones
+              before that, with their reports.
             </Text>
           ) : undefined
         }
@@ -180,7 +202,7 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
                 {item.config.us} v {item.config.them}
               </Text>
               <Text style={ui.muted}>
-                {[item.teamName, new Date(item.createdAt).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })]
+                {[item.teamName, gameWhen(item.createdAt)]
                   .filter(Boolean)
                   .join(' · ')}
               </Text>
@@ -192,6 +214,13 @@ function Games({ club, email }: { club: ClubEntry; email: string | null }) {
             )}
           </Pressable>
         )}
+        ListFooterComponent={
+          games && more ? (
+            <Btn label={loadingEarlier ? 'Loading…' : 'Earlier games'} tone="dim" onPress={() => void loadEarlier()} disabled={loadingEarlier} />
+          ) : games && earlier.length > 0 ? (
+            <Text style={[ui.muted, styles.end]}>No games before these.</Text>
+          ) : undefined
+        }
         contentContainerStyle={styles.list}
       />
       <View style={styles.row}>
@@ -214,6 +243,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   grow: { flex: 1 },
   small: { minHeight: 44 },
+  end: { textAlign: 'center', paddingVertical: 8 },
   list: { gap: 10, paddingBottom: 8 },
   game: {
     flexDirection: 'row',
