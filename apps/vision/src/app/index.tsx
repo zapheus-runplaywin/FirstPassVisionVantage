@@ -3,7 +3,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppleButton, useAppleSignIn } from '../components/AppleButton';
 import { Btn, ui } from '../components/ui';
+import { signInWithApple } from '../lib/apple';
 import { signInWithGoogle, signOut, useSession } from '../lib/auth';
 import { clubs, type ClubEntry } from '../lib/clubs';
 import { followGame, loadGames, type GameListEntry } from '../lib/games';
@@ -77,11 +79,12 @@ function ChooseClub() {
 function SignIn({ club, next }: { club: ClubEntry; next: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const go = async () => {
+  const apple = useAppleSignIn();
+  const go = async (how: () => Promise<void> = () => signInWithGoogle(next)) => {
     setBusy(true);
     setError(null);
     try {
-      await signInWithGoogle(next);
+      await how();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -91,12 +94,17 @@ function SignIn({ club, next }: { club: ClubEntry; next: string }) {
   return (
     <View style={styles.form}>
       <Text style={ui.h1}>{club.name}</Text>
-      <Text style={ui.muted}>Sign in with the Google account you use for FirstPass HQ. Coaches and managers see their team's games.</Text>
+      <Text style={ui.muted}>
+        {apple
+          ? "Sign in the same way you do in FirstPass HQ, with Apple or Google. Coaches and managers see their team's games."
+          : "Sign in with the Google account you use for FirstPass HQ. Coaches and managers see their team's games."}
+      </Text>
       {Platform.OS === 'web' ? (
         <Text style={ui.muted}>Use your own phone or computer, not a shared one: you stay signed in in this browser until you sign out.</Text>
       ) : null}
       {error ? <Text style={ui.error}>{error}</Text> : null}
-      <Btn label={busy ? 'Signing in…' : 'Sign in with Google'} onPress={go} disabled={busy} />
+      {apple && !busy ? <AppleButton onPress={() => void go(signInWithApple)} /> : null}
+      <Btn label={busy ? 'Signing in…' : 'Sign in with Google'} onPress={() => void go()} disabled={busy} />
       <Btn label="Change club" tone="quiet" onPress={() => void leaveClub()} />
     </View>
   );
