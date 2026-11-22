@@ -1,4 +1,4 @@
-import { seasonPlayers, type SeasonPlayer } from '@firstpass/engine';
+import { seasonPlayers } from '@firstpass/engine';
 import { colors } from '@firstpass/ui';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -7,8 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chips } from '../components/Chips';
 import { Btn, ui } from '../components/ui';
 import { useSession } from '../lib/auth';
-import { loadSeason, loadSeasonTeams, type LoadedSeason, type SeasonTeam } from '../lib/season';
-import { ROUND_HEAD, SEASON_HEAD, SEASON_NOTE, extrasLine, roundRows, seasonRows } from '../stats/season';
+import { loadPlayhqResults, loadSeason, loadSeasonTeams, type LoadedPlayhq, type LoadedSeason, type SeasonTeam } from '../lib/season';
+import { PLAYHQ_NOTE, ROUND_HEAD, SEASON_HEAD, SEASON_NOTE, extrasLine, playhqScores, roundRows, seasonRows, withPlayhq, type SeasonAthlete } from '../stats/season';
 
 /*
  * The season so far for one team: each athlete's figures added up over the
@@ -40,6 +40,7 @@ function back() {
 function SignedInSeason({ team }: { team: string }) {
   const [teams, setTeams] = useState<SeasonTeam[] | null>(null);
   const [season, setSeason] = useState<LoadedSeason | null>(null);
+  const [playhq, setPlayhq] = useState<LoadedPlayhq | null>(null);
   const [progress, setProgress] = useState<[number, number] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -56,17 +57,21 @@ function SignedInSeason({ team }: { team: string }) {
     if (!chosenId) return;
     let current = true;
     setSeason(null);
+    setPlayhq(null);
     setProgress(null);
     setOpen(null);
     loadSeason(chosenId, (done, of) => current && setProgress([done, of]))
       .then((loaded) => current && setSeason(loaded))
       .catch((e: unknown) => current && setError(e instanceof Error ? e.message : String(e)));
+    // Games nobody recorded, from PlayHQ. The season shows without them if they don't come.
+    void loadPlayhqResults(chosenId).then((loaded) => current && setPlayhq(loaded));
     return () => {
       current = false;
     };
   }, [chosenId]);
 
-  const players = useMemo(() => (season ? seasonPlayers(season.games) : []), [season]);
+  const players = useMemo(() => (season ? withPlayhq(seasonPlayers(season.games), playhq?.games ?? []) : []), [season, playhq]);
+  const fromPlayhq = playhq?.games ?? [];
 
   return (
     <SafeAreaView style={ui.screen}>
@@ -93,7 +98,14 @@ function SignedInSeason({ team }: { team: string }) {
             <Text style={ui.muted}>
               {chosen.name} · {season.games.length} finished {season.games.length === 1 ? 'game' : 'games'}
               {season.skipped ? ` · ${season.skipped} could not be opened` : ''}
+              {fromPlayhq.length ? ` · ${fromPlayhq.length} more from PlayHQ` : ''}
             </Text>
+            {fromPlayhq.length ? <Text style={ui.muted}>From PlayHQ, with no statistician: {playhqScores(fromPlayhq)}</Text> : null}
+            {playhq && playhq.failed ? (
+              <Text style={ui.muted}>
+                PlayHQ did not answer for {playhq.failed} {playhq.failed === 1 ? 'game' : 'games'} nobody recorded. Open the season again to try once more.
+              </Text>
+            ) : null}
             {players.length === 0 ? (
               <Text style={ui.muted}>
                 No athlete is named in these games. The season view needs each game's lineup, with substitutions, to have been recorded in Vantage.
@@ -102,7 +114,7 @@ function SignedInSeason({ team }: { team: string }) {
               <View>
                 <Row cells={SEASON_HEAD} head />
                 {seasonRows(players).map((cells, i) => {
-                  const player = players[i] as SeasonPlayer;
+                  const player = players[i] as SeasonAthlete;
                   const isOpen = open === player.name;
                   return (
                     <View key={player.name}>
@@ -134,6 +146,7 @@ function SignedInSeason({ team }: { team: string }) {
               them, so a game with no lineup adds nothing. Net Pts per 10 min lets athletes with different court time be read side by side; it shows
               from 5 minutes on court.
             </Text>
+            {fromPlayhq.length ? <Text style={s.hint}>{PLAYHQ_NOTE}</Text> : null}
             <Text style={s.hint}>{SEASON_NOTE}</Text>
           </>
         ) : null}

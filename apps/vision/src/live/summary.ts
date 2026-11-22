@@ -6,6 +6,8 @@ import type { Connection } from './feed';
 export const QUIET_MS = 30_000;
 /** Without live updates, the last good read may be this old before the coach is warned. */
 export const OFFLINE_MS = 15_000;
+/** How long after Studio last answered over the venue link it still counts as in touch (a request waits there up to 20 s). */
+export const VENUE_FRESH_MS = 30_000;
 
 export interface QuarterScore {
   period: number;
@@ -86,11 +88,13 @@ export type Freshness = { kind: 'fresh' } | { kind: 'quiet'; seconds: number } |
 
 /** Whether the coach should be warned the numbers may be behind. */
 export function freshness(
-  feed: { connection: Connection; lastEventAt: number | null; lastReadAt: number | null },
+  feed: { connection: Connection; lastEventAt: number | null; lastReadAt: number | null; venueReadAt?: number | null },
   running: boolean,
   now: number,
 ): Freshness {
-  if (feed.connection !== 'live' && (feed.lastReadAt === null || now - feed.lastReadAt > OFFLINE_MS)) {
+  // Studio answering over the venue link counts as being in touch, whatever the internet is doing.
+  const venue = feed.venueReadAt != null && now - feed.venueReadAt <= VENUE_FRESH_MS;
+  if (!venue && feed.connection !== 'live' && (feed.lastReadAt === null || now - feed.lastReadAt > OFFLINE_MS)) {
     return { kind: 'offline', seconds: feed.lastReadAt === null ? null : Math.floor((now - feed.lastReadAt) / 1000) };
   }
   if (running && feed.lastEventAt !== null && now - feed.lastEventAt > QUIET_MS) {

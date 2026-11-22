@@ -1,5 +1,6 @@
 import { mergeStreams, type SeasonGame } from '@firstpass/engine';
 import { readConfig } from '../live/summary';
+import type { PlayhqGame } from '../stats/season';
 import { fetchEventsSince, followGame } from './games';
 import { client } from './supabase';
 
@@ -97,4 +98,57 @@ export async function loadSeason(teamId: string, onProgress?: (done: number, of:
 /** A game's date for the season view, such as "9 May". */
 export function gameDay(playedAt: string, locale?: string): string {
   return new Date(playedAt).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+}
+
+export interface LoadedPlayhq {
+  games: PlayhqGame[];
+  /** Games PlayHQ would not give this time. */
+  failed: number;
+  /** HQ could not be asked, or refused: the season shows recorded games only. */
+  unavailable: boolean;
+}
+
+type ResultRow = { id?: unknown; playedAt?: unknown; opponent?: unknown; us?: unknown; them?: unknown; players?: unknown };
+type PlayerRow = { name?: unknown; positions?: unknown; goals?: unknown; shots?: unknown };
+
+/**
+ * The team's games nobody recorded, as PlayHQ has them. HQ's playhq function
+ * reads them, for the people who already see the team's games; PlayHQ itself
+ * does not answer a browser. Never throws: with no answer the season view
+ * simply shows the recorded games.
+ */
+export async function loadPlayhqResults(teamId: string): Promise<LoadedPlayhq> {
+  const none: LoadedPlayhq = { games: [], failed: 0, unavailable: true };
+  try {
+    const res = await need().functions.invoke('playhq', { body: { teamId } });
+    const data = res.data as { games?: unknown; failed?: unknown } | null;
+    if (res.error || !data || !Array.isArray(data.games)) return none;
+    const games: PlayhqGame[] = [];
+    for (const g of data.games as ResultRow[]) {
+      if (!g || typeof g.id !== 'string' || typeof g.playedAt !== 'string' || typeof g.us !== 'number' || typeof g.them !== 'number') continue;
+      const players = (Array.isArray(g.players) ? (g.players as PlayerRow[]) : []).flatMap((p) =>
+        p && typeof p.name === 'string' && p.name.trim()
+          ? [
+              {
+                name: p.name,
+                positions: Array.isArray(p.positions) ? p.positions.filter((x): x is string => typeof x === 'string') : [],
+                goals: typeof p.goals === 'number' ? p.goals : 0,
+                shots: typeof p.shots === 'number' ? p.shots : null,
+              },
+            ]
+          : [],
+      );
+      games.push({
+        id: g.id,
+        label: `${gameDay(g.playedAt)} v ${typeof g.opponent === 'string' && g.opponent ? g.opponent : 'opponent'}`,
+        playedAt: g.playedAt,
+        us: g.us,
+        them: g.them,
+        players,
+      });
+    }
+    return { games, failed: typeof data.failed === 'number' ? data.failed : 0, unavailable: false };
+  } catch {
+    return none;
+  }
 }

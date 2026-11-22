@@ -25,6 +25,7 @@ import { deckWanted, useDeck } from '../../lib/deck';
 import { setHelper, useRemote } from '../../lib/helper';
 import { keyboardWanted } from '../../lib/keyboard';
 import { syncLabel, useSync } from '../../lib/sync';
+import { useVenue, venueLabel } from '../../lib/venue';
 
 type SheetState = { kind: 'edit'; event: LiveEvent } | { kind: 'subs' } | { kind: 'stats' } | { kind: 'export' } | { kind: 'clock' } | { kind: 'helper' } | { kind: 'keys' };
 
@@ -71,6 +72,8 @@ function Entry({ game }: { game: Game }) {
   const compact = width < 1000;
   const [pending, setPending] = useState<Pending | null>(null);
   const sync = useSync(game.id, game.ownCount);
+  // The venue link: each event also goes straight to Studio on the venue's network, when this tablet is connected to one.
+  const venue = venueLabel(useVenue(game.id, game.ownCount));
   const pairCode = sync.kind === 'synced' || sync.kind === 'queued' ? getGame(game.id)?.pairCode : null;
   const [sheet, setSheet] = useState<SheetState | null>(null);
 
@@ -391,6 +394,7 @@ function Entry({ game }: { game: Game }) {
         <View style={{ flex: 1 }} />
         {deck !== 'off' ? <Pill label="Stream Deck" value={deck === 'connected' ? 'on' : 'not found'} /> : null}
         {keyboardOn ? <Btn label="Keys" tone={sheet?.kind === 'keys' ? 'selected' : 'target'} onPress={() => setSheet(sheet?.kind === 'keys' ? null : { kind: 'keys' })} style={styles.topBtn} /> : null}
+        {venue ? <Pill label="Venue link" value={venue.replace('Studio: ', '')} /> : null}
         {pairCode ? <Pill label="Pair code" value={`${pairCode.slice(0, 3)} ${pairCode.slice(3)}`} /> : null}
         {!compact || sync.kind === 'lease lost' || sync.kind === 'refused' || sync.kind === 'offline' ? (
           <Text numberOfLines={2} style={[s.muted, styles.syncText, (sync.kind === 'lease lost' || sync.kind === 'refused') && styles.warnText]}>

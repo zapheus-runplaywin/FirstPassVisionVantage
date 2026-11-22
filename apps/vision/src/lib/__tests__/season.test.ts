@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const rpc = vi.hoisted(() => vi.fn());
 const filters = vi.hoisted(() => [] as [string, string, unknown][]);
+const invoke = vi.hoisted(() => vi.fn());
 const tables = vi.hoisted(() => ({ games: [] as unknown[], events: {} as Record<string, unknown[]> }));
 
 function query(table: string) {
@@ -31,9 +32,9 @@ function query(table: string) {
   return q;
 }
 
-vi.mock('../supabase', () => ({ client: () => ({ rpc, from: query }) }));
+vi.mock('../supabase', () => ({ client: () => ({ rpc, from: query, functions: { invoke } }) }));
 
-const { gameDay, loadSeason, loadSeasonTeams } = await import('../season');
+const { gameDay, loadPlayhqResults, loadSeason, loadSeasonTeams } = await import('../season');
 
 const event = (gameId: string, seq: number) => ({
   game_id: gameId,
@@ -47,6 +48,7 @@ const event = (gameId: string, seq: number) => ({
 
 beforeEach(() => {
   rpc.mockReset();
+  invoke.mockReset();
   filters.length = 0;
   tables.games = [];
   tables.events = {};
@@ -113,4 +115,66 @@ describe('loadSeason', () => {
 
 it('writes a game day shortly', () => {
   expect(gameDay('2026-05-09T02:00:00Z', 'en-AU')).toBe('9 May');
+});
+
+/*
+ * Games nobody recorded come from PlayHQ through HQ's playhq function, which
+ * decides who may have them. Whatever goes wrong there, the season view still
+ * shows the recorded games.
+ */
+describe('loadPlayhqResults', () => {
+  const game = {
+    id: 'f1',
+    playedAt: '2026-05-02T02:00:00+00:00',
+    opponent: 'Swans',
+    round: 'Round 1',
+    us: 41,
+    them: 38,
+    players: [
+      { name: 'Mia Chen', positions: ['GS'], goals: 25, shots: 31 },
+      { name: 'Ava New', positions: ['C', 7], goals: 0, shots: null },
+    ],
+  };
+
+  it('asks HQ for the team and reads each game', async () => {
+    invoke.mockResolvedValue({ data: { games: [game], failed: 1 }, error: null });
+    const loaded = await loadPlayhqResults('t1');
+    expect(invoke).toHaveBeenCalledWith('playhq', { body: { teamId: 't1' } });
+    expect(loaded.unavailable).toBe(false);
+    expect(loaded.failed).toBe(1);
+    expect(loaded.games).toHaveLength(1);
+    expect(loaded.games[0]).toMatchObject({ id: 'f1', playedAt: '2026-05-02T02:00:00+00:00', us: 41, them: 38 });
+    expect(loaded.games[0]!.label).toMatch(/ v Swans$/);
+    expect(loaded.games[0]!.players).toEqual([
+      { name: 'Mia Chen', positions: ['GS'], goals: 25, shots: 31 },
+      { name: 'Ava New', positions: ['C'], goals: 0, shots: null },
+    ]);
+  });
+
+  it('gives no games when HQ refuses, as for someone who may not see the team', async () => {
+    invoke.mockResolvedValue({ data: null, error: { message: 'Edge Function returned a non-2xx status code' } });
+    expect(await loadPlayhqResults('t1')).toEqual({ games: [], failed: 0, unavailable: true });
+  });
+
+  it('gives no games when the request itself fails', async () => {
+    invoke.mockRejectedValue(new Error('offline'));
+    expect(await loadPlayhqResults('t1')).toEqual({ games: [], failed: 0, unavailable: true });
+  });
+
+  it('gives no games for an answer that is not a list, as from an older HQ', async () => {
+    invoke.mockResolvedValue({ data: { error: 'That isn’t a PlayHQ competition link' }, error: null });
+    expect((await loadPlayhqResults('t1')).unavailable).toBe(true);
+  });
+
+  it('skips a game or player it cannot read', async () => {
+    invoke.mockResolvedValue({
+      data: { games: [null, { id: 'x' }, { ...game, id: 'f2', opponent: null, players: [{ name: ' ' }, null, { name: 'Mia Chen' }] }] },
+      error: null,
+    });
+    const loaded = await loadPlayhqResults('t1');
+    expect(loaded.games.map((g) => g.id)).toEqual(['f2']);
+    expect(loaded.games[0]!.label).toMatch(/ v opponent$/);
+    expect(loaded.games[0]!.players).toEqual([{ name: 'Mia Chen', positions: [], goals: 0, shots: null }]);
+    expect(loaded.failed).toBe(0);
+  });
 });

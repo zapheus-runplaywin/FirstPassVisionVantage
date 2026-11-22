@@ -29,6 +29,13 @@ the reports. It follows each game first, so HQ's rules decide what a coach or
 manager can read: their own team's games only. An athlete is matched between
 games by the name in the lineup, ignoring case and spacing, so a game with no
 lineup recorded adds nothing and a name spelt two ways shows as two athletes.
+Games nobody recorded join it from PlayHQ: HQ's `playhq` function reads the
+score and each of our players' goals (and attempts, when the scorer entered
+them) for the team's past fixtures with no finished recording, for the people
+who already see the team's games, and `loadPlayhqResults` and `withPlayhq`
+add them marked "PlayHQ". They carry shooting only, so they add nothing to
+time on court, gains or Net Points; goals with no attempts stay out of the
+percentage. If HQ doesn't answer, the season shows the recorded games alone.
 It is for the coaching team and names players. This is the first step of the
 Pathway Passport idea (issue #12): one club, one team's games, no sharing
 outside the club and nothing for athletes or parents yet.

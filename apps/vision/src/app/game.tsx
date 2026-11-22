@@ -148,7 +148,7 @@ function SignedInGame({ id }: { id: string }) {
           />
         ) : null}
         {/* A finished game has nothing live to follow, and the top row is short of room on a phone. */}
-        {summary.phase === 'full time' && fresh.kind === 'fresh' ? null : <ConnectionChip connection={feed.connection} fresh={fresh} />}
+        {summary.phase === 'full time' && fresh.kind === 'fresh' ? null : <ConnectionChip connection={feed.connection} fresh={fresh} venue={feed.venueReadAt !== null} />}
         {Platform.OS === 'web' ? <Btn label="Sign out" tone="quiet" onPress={() => void signOut()} style={styles.back} /> : null}
       </View>
       {fresh.kind !== 'fresh' ? <StaleBanner fresh={fresh} error={feed.error} /> : null}
@@ -304,8 +304,9 @@ function Score({ summary }: { summary: ScoreSummary }) {
   );
 }
 
-function ConnectionChip({ connection, fresh }: { connection: Connection; fresh: Freshness }) {
-  const label = connection === 'live' ? 'Live' : connection === 'polling' ? 'Checking every 5 s' : 'Connecting';
+function ConnectionChip({ connection, fresh, venue }: { connection: Connection; fresh: Freshness; venue: boolean }) {
+  // The venue link: Studio at the venue is handing this phone the game's events.
+  const label = venue ? 'Live on venue link' : connection === 'live' ? 'Live' : connection === 'polling' ? 'Checking every 5 s' : 'Connecting';
   return (
     <View style={styles.chip} accessible accessibilityLabel={`Connection: ${label}`}>
       <View style={[styles.dot, { backgroundColor: fresh.kind === 'fresh' ? colors.text : colors.attention }]} />
