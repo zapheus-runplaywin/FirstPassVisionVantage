@@ -15,7 +15,7 @@ This can't be undone. If you belong to more than one club, this deletes your acc
 
 ## What is deleted
 
-Your profile, your squad and team places, your guardian links, your personal tasks and your messages inbox. If you sign in again later, you'll need to ask to join again.
+Your profile, your squad and team places, your guardian links, your personal tasks, your messages inbox, and anyone you blocked in chat groups (with the club's record of those blocks). If you sign in again later, you'll need to ask to join again.
 
 ## What the club keeps
 

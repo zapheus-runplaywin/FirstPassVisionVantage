@@ -23,6 +23,7 @@ Only what the club needs to run. Depending on your role, that is:
 - **What members write in the app:** group messages, the answers members pick to a message's question, and who read them; posts in chat groups, if your club uses them; survey answers, game goals and reflections, session plans and their photos, award votes, integrity training certificates, and concerns raised with the club.
 - **Safeguarding records:** concerns, stand-downs, Screening Unit notices, parents' consents, code of conduct acceptances and policy acknowledgements.
 - **A record of who opened a child's records,** and when, so parents can see it.
+- **Blocks in chat groups:** who blocked whom, when, in which group, and how the club followed it up.
 - **A notification token** for your phone, if you allow notifications.
 
 The app does not use your location, your contacts or your phone's calendar. It has no advertising, no analytics and no tracking, and we never sell or rent your information. The app keeps a short technical log on your phone to help find faults; it never leaves the phone and has names, emails and health details removed.
@@ -44,7 +45,7 @@ To run the club: to sign you in, put you in the right squads and teams, send clu
 
 Members can't message each other privately. There are no feeds, profile pictures, likes or following, and no way to find or contact a member outside your club's own squads, teams and roles. Messages go from coaches, managers, the committee and admins to whole squads, teams or roles, and members can't reply to them in writing.
 
-A club can also turn on chat groups. Each group is a set of people the club puts together by squad, team or role; members can't make or join groups themselves. Members under 18 post only in their own squad's or team's group while one of its coaches is in it, and read only in other groups. A group's coaches can hide any post from the group, and any member can report a post to the club's Child Safety Officer. A parent gets a copy of every message and group post to or from their child.
+A club can also turn on chat groups. Each group is a set of people the club puts together by squad, team or role; members can't make or join groups themselves. Members under 18 post only in their own squad's or team's group while one of its coaches is in it, and read only in other groups. A group's coaches can hide any post from the group, and any member can report a post to the club's Child Safety Officer. Any member can block someone in their groups so their posts no longer show; the person blocked isn't told, and the club's admins, Child Safety Officer and Complaints Manager are, so they can check in. An adult can't block a member under 18. A parent gets a copy of every message and group post to or from their child.
 
 ## Where it is kept
 
@@ -67,6 +68,7 @@ Each club chooses how long it keeps each kind of record, and nothing is removed 
 - attendance, absences and session plans: 1 year;
 - game goals and reflections: 1 year;
 - message and chat group post text: 3 years, or 7 years when a child sent or received it;
+- blocks in chat groups: until either member's account is deleted;
 - injury letters and reports: 1 year after the injury is cleared;
 - injuries: 7 years after they are cleared, or after the athlete leaves the club;
 - medical and emergency details: 2 years after their last yearly check;
