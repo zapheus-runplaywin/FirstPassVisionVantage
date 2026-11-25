@@ -21,7 +21,7 @@ Your profile, your squad and team places, your guardian links, your personal tas
 
 - **Your injury records,** where only the committee and admins can see them, for the club's keep period for injuries (7 years unless the club chose 3, 5 or 10), counted from when you leave, and then they are deleted. Clearance documents may go sooner, after the club's keep period for injury documents. Nothing is deleted while the club has removing old records switched off.
 - **Under your name:** your code of conduct acceptances, any concerns you raised (unless you hid your name) and, if you coach or manage, your season KPIs and their reviews.
-- **Messages you sent to a group** stay with the people who received them.
+- **Messages you sent to a group,** and your posts in chat groups, stay with the people who received them.
 
 If you're the only verified parent or guardian linked to a child under 18, their app locks again until another parent or guardian is linked, and the club's admins are told.
 

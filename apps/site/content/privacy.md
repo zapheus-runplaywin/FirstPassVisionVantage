@@ -1,6 +1,6 @@
 # FirstPass HQ privacy policy
 
-Last updated: 18 November 2026
+Last updated: 25 November 2026
 
 FirstPass HQ is an app that netball clubs use to run the club: messages, attendance, injuries, Working With Children Checks and child safety. This policy explains what the app keeps about you, why, who can see it, how long it is kept, and how to have it deleted.
 
@@ -20,7 +20,7 @@ Only what the club needs to run. Depending on your role, that is:
 - **Working With Children Check details** for adults who work with children: card number, name on the card, expiry, application receipts and exemptions.
 - **Health information:** injuries, physio updates, clearance letters and reports; medical and emergency details (emergency contacts and their phone numbers, conditions, allergies, medications, action plans); and daily wellbeing check-ins (sleep, soreness, stress, mood and a note).
 - **Training and attendance:** training sessions athletes log (minutes and effort), attendance at sessions and games, and absences with their reasons.
-- **What members write in the app:** group messages and who read them, survey answers, game goals and reflections, session plans and their photos, award votes, integrity training certificates, and concerns raised with the club.
+- **What members write in the app:** group messages, the answers members pick to a message's question, and who read them; posts in chat groups, if your club uses them; survey answers, game goals and reflections, session plans and their photos, award votes, integrity training certificates, and concerns raised with the club.
 - **Safeguarding records:** concerns, stand-downs, Screening Unit notices, parents' consents, code of conduct acceptances and policy acknowledgements.
 - **A record of who opened a child's records,** and when, so parents can see it.
 - **A notification token** for your phone, if you allow notifications.
@@ -42,7 +42,9 @@ To run the club: to sign you in, put you in the right squads and teams, send clu
 
 ## The app is not social media
 
-Members can't message each other privately or reply to messages. There are no feeds, profile pictures, likes or following. Messages go from coaches, managers, the committee and admins to whole squads, teams or roles, and a parent gets a copy of every message to or from their child.
+Members can't message each other privately. There are no feeds, profile pictures, likes or following, and no way to find or contact a member outside your club's own squads, teams and roles. Messages go from coaches, managers, the committee and admins to whole squads, teams or roles, and members can't reply to them in writing.
+
+A club can also turn on chat groups. Each group is a set of people the club puts together by squad, team or role; members can't make or join groups themselves. Members under 18 post only in their own squad's or team's group while one of its coaches is in it, and read only in other groups. A group's coaches can hide any post from the group, and any member can report a post to the club's Child Safety Officer. A parent gets a copy of every message and group post to or from their child.
 
 ## Where it is kept
 
@@ -64,7 +66,7 @@ Each club chooses how long it keeps each kind of record, and nothing is removed 
 - daily check-ins and training sessions: 1 year;
 - attendance, absences and session plans: 1 year;
 - game goals and reflections: 1 year;
-- message text: 3 years, or 7 years when a child sent or received it;
+- message and chat group post text: 3 years, or 7 years when a child sent or received it;
 - injury letters and reports: 1 year after the injury is cleared;
 - injuries: 7 years after they are cleared, or after the athlete leaves the club;
 - medical and emergency details: 2 years after their last yearly check;
