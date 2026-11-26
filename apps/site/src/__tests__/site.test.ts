@@ -3,7 +3,17 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { CONTENT_SECURITY_POLICY, PAGES, PLACEHOLDER_MARK, buildSite, placeholderPages } from '../site.ts';
+import {
+  CONTENT_SECURITY_POLICY,
+  GUIDE_EDITIONS,
+  GUIDE_ROLES,
+  GUIDES_URL,
+  PAGES,
+  PLACEHOLDER_MARK,
+  buildSite,
+  guideUrl,
+  placeholderPages,
+} from '../site.ts';
 
 const sample: Record<string, string> = {
   'privacy.md': '# Privacy policy\n\nWe keep **little**. See [Support](/support).',
@@ -20,10 +30,10 @@ describe('buildSite', () => {
   const files = buildSite(read);
   const byPath = new Map(files.map((f) => [f.path, f.contents]));
 
-  it('makes a page for each store link, plus a home page and a not-found page', () => {
+  it('makes a page for each store link and the guides, plus a home page and a not-found page', () => {
     // Expo Hosting serves /privacy from privacy.html, as for an Expo Router export.
     expect([...byPath.keys()].sort()).toEqual(
-      ['+not-found.html', 'delete-account.html', 'index.html', 'privacy.html', 'support.html'].sort(),
+      ['+not-found.html', 'delete-account.html', 'guides.html', 'index.html', 'privacy.html', 'support.html'].sort(),
     );
   });
 
@@ -43,6 +53,13 @@ describe('buildSite', () => {
   it('links every page from the home and not-found pages', () => {
     for (const path of ['index.html', '+not-found.html']) {
       for (const page of PAGES) expect(byPath.get(path)).toContain(`href="/${page.slug}"`);
+      expect(byPath.get(path)).toContain('<a href="/guides">User guides</a>');
+    }
+  });
+
+  it('has Guides in every page’s navigation, current on the guides page', () => {
+    for (const [path, html] of byPath) {
+      expect(html).toContain(path === 'guides.html' ? '<a href="/guides" aria-current="page">Guides</a>' : '<a href="/guides">Guides</a>');
     }
   });
 
@@ -51,7 +68,13 @@ describe('buildSite', () => {
     (_path, html) => {
       expect(html).not.toMatch(/<script|<iframe|<form|<object|<embed/i);
       expect(html).not.toMatch(/\son[a-z]+=/i);
-      expect(html).not.toMatch(/(src|href)="(https?:)?\/\/(?!support\.google)/i);
+      // Nothing loads from another address. The only links that may leave the
+      // site are to the published user guides, on the guides page alone, and to
+      // Google's help pages, as before.
+      expect(html).not.toMatch(/src="(https?:)?\/\//i);
+      const away = [...html.matchAll(/href="((?:https?:)?\/\/[^"]*)"/gi)].map((m) => m[1] ?? '');
+      for (const href of away) expect(href.startsWith(`${GUIDES_URL}/`) || href.startsWith('https://support.google')).toBe(true);
+      if (_path !== 'guides.html') expect(away.filter((href) => href.startsWith(GUIDES_URL))).toEqual([]);
       expect(html).toContain(`content="${CONTENT_SECURITY_POLICY}"`);
       expect(html).toContain('<meta name="viewport" content="width=device-width, initial-scale=1">');
       expect(html).toContain('<html lang="en-AU">');
@@ -70,6 +93,50 @@ describe('buildSite', () => {
     const support = html.find((f) => f.path === 'support.html')?.contents ?? '';
     expect(support).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
     expect(support).not.toContain('<script>');
+  });
+});
+
+describe('the guides page', () => {
+  const html = buildSite(read).find((f) => f.path === 'guides.html')?.contents ?? '';
+  const hrefs = [...html.matchAll(/href="(https:[^"]*)"/g)].map((m) => m[1]);
+
+  it('links every role’s guide for the FirstPass HQ edition and for West Coast Thunder, once each', () => {
+    expect(GUIDE_EDITIONS.map((e) => e.folder)).toEqual(['generic', 'thunder']);
+    expect(GUIDE_ROLES.map((r) => r.file)).toEqual([
+      'athletes',
+      'guardians',
+      'coaches',
+      'managers',
+      'committee',
+      'physios',
+      'guests',
+      'statisticians',
+      'temporary-helpers',
+      'admins',
+    ]);
+    const expected = GUIDE_EDITIONS.flatMap((e) => GUIDE_ROLES.map((r) => guideUrl(e.folder, r.file)));
+    expect(hrefs).toEqual(expected);
+    expect(hrefs).toHaveLength(20);
+  });
+
+  it('addresses each guide the way FirstPass HQ publishes it', () => {
+    expect(guideUrl('thunder', 'temporary-helpers')).toBe(
+      'https://zapheus-runplaywin.github.io/FirstPassHQ/guides/thunder/user-guide-temporary-helpers.pdf',
+    );
+    for (const href of hrefs) expect(href).toMatch(/^https:\/\/zapheus-runplaywin\.github\.io\/FirstPassHQ\/guides\/(generic|thunder)\/user-guide-[a-z-]+\.pdf$/);
+  });
+
+  it('never offers the Warriors pitch, a manual or a brochure', () => {
+    expect(html).not.toMatch(/warriors|manual|brochure/i);
+  });
+
+  it('names each edition and says who each guide is for', () => {
+    expect(html).toContain('<title>User guides · FirstPass HQ</title>');
+    expect(html).toContain('<h1>User guides</h1>');
+    expect(html).toContain('<h2>FirstPass HQ</h2>');
+    expect(html).toContain('<h2>West Coast Thunder</h2>');
+    expect(html).toContain('>Parents and guardians</a>');
+    expect(html).toContain('>Temporary helpers</a>');
   });
 });
 

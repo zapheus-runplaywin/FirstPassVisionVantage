@@ -5,8 +5,9 @@ name: Deploy web
 # EXPO_TOKEN, the same one the EAS build workflow uses.
 #
 # site: FirstPass HQ's public pages (privacy policy, support, delete my
-#   account) from apps/site. Refuses to publish while any page still holds
-#   placeholder text.
+#   account, and the list of user guides) from apps/site. Refuses to publish
+#   while any page still holds placeholder text. The guide PDFs themselves
+#   are published by the FirstPassHQ repo's "Publish guides" workflow.
 # vision: FirstPass Vision for coaches' phone browsers, at
 #   https://firstpass-vision.expo.app. Its sign-in address,
 #   https://firstpass-vision.expo.app/auth-callback, must be on each club

@@ -2,6 +2,9 @@
 // delete-my-account. Their words are written once in the HQ repo
 // (docs/store/public-pages/) and copied into content/ by
 // scripts/sync-public-pages.sh; this file only lays them out.
+//
+// The guides page is the one page written here: a list of links to the user
+// guide PDFs that the HQ repo publishes on GitHub Pages.
 
 import { escapeHtml, renderMarkdown } from './markdown.ts';
 
@@ -19,6 +22,67 @@ export const PAGES: readonly PageSource[] = [
   { slug: 'support', file: 'support.md', nav: 'Support' },
   { slug: 'delete-account', file: 'delete-account.md', nav: 'Delete my account' },
 ];
+
+/**
+ * Where the HQ repo's "Publish guides" workflow puts the user guides, under
+ * names that stay the same from one build to the next:
+ * <GUIDES_URL>/<edition>/user-guide-<role>.pdf (HQ docs/pdfs/README.md,
+ * "Published guides"). The only other site these pages link to.
+ */
+export const GUIDES_URL = 'https://zapheus-runplaywin.github.io/FirstPassHQ/guides';
+
+/** The editions HQ publishes: the one for every club, then each club's own. */
+export const GUIDE_EDITIONS: readonly { folder: string; name: string; about: string }[] = [
+  {
+    folder: 'generic',
+    name: 'FirstPass HQ',
+    about: 'For every club. These show a made-up club, Bayside Netball Club.',
+  },
+  {
+    folder: 'thunder',
+    name: 'West Coast Thunder',
+    about: 'The same guides in West Coast Thunder’s name and colours, for its members.',
+  },
+];
+
+/** One guide per role, as HQ's scripts/build-guides-site.py names them. */
+export const GUIDE_ROLES: readonly { file: string; readers: string }[] = [
+  { file: 'athletes', readers: 'Athletes' },
+  { file: 'guardians', readers: 'Parents and guardians' },
+  { file: 'coaches', readers: 'Coaches' },
+  { file: 'managers', readers: 'Managers' },
+  { file: 'committee', readers: 'Committee' },
+  { file: 'physios', readers: 'Physios' },
+  { file: 'guests', readers: 'Guests' },
+  { file: 'statisticians', readers: 'Statisticians' },
+  { file: 'temporary-helpers', readers: 'Temporary helpers' },
+  { file: 'admins', readers: 'Admins' },
+];
+
+/** The guides page's place in the navigation and its address, /guides. */
+export const GUIDES_PAGE = { slug: 'guides', nav: 'Guides', title: 'User guides' } as const;
+
+/** The address of one role's guide in one edition. */
+export function guideUrl(edition: string, file: string): string {
+  return `${GUIDES_URL}/${edition}/user-guide-${file}.pdf`;
+}
+
+/** The guides page: every role's guide, for each edition. */
+export function guidesBody(): string {
+  const editions = GUIDE_EDITIONS.map((edition) => {
+    const links = GUIDE_ROLES.map(
+      (role) =>
+        `<li><a href="${escapeHtml(guideUrl(edition.folder, role.file))}">${escapeHtml(role.readers)}</a></li>`,
+    ).join('');
+    return `<h2>${escapeHtml(edition.name)}</h2>\n<p>${escapeHtml(edition.about)}</p>\n<ul>${links}</ul>`;
+  }).join('\n');
+  return [
+    `<h1>${escapeHtml(GUIDES_PAGE.title)}</h1>`,
+    '<p>FirstPass HQ has a user guide for each role, as a PDF. Someone with more than one role reads each of their roles’ guides. In the app, yours is under Help in the Me tab.</p>',
+    editions,
+    '<p class="updated">The guides are kept on GitHub Pages, so opening one loads it from github.io. They are replaced whenever new ones are made, and the cover says which build of the app each describes. Every person in them is made up.</p>',
+  ].join('\n');
+}
 
 /** Text that marks a page as not ready to publish. */
 export const PLACEHOLDER_MARK = 'PLACEHOLDER: not for publishing';
@@ -95,7 +159,7 @@ interface LayoutOptions {
 }
 
 export function layout({ title, description, body, current }: LayoutOptions): string {
-  const nav = PAGES.map((page) => {
+  const nav = [...PAGES, GUIDES_PAGE].map((page) => {
     const attr = page.slug === current ? ' aria-current="page"' : '';
     return `<a href="/${page.slug}"${attr}>${escapeHtml(page.nav)}</a>`;
   }).join('');
@@ -149,6 +213,17 @@ export function buildSite(read: (file: string) => string): BuiltFile[] {
     });
   }
 
+  titles.push({ slug: GUIDES_PAGE.slug, title: GUIDES_PAGE.title });
+  files.push({
+    path: `${GUIDES_PAGE.slug}.html`,
+    contents: layout({
+      title: `${GUIDES_PAGE.title} · FirstPass HQ`,
+      description: 'User guides for the FirstPass HQ app, one for each role.',
+      body: guidesBody(),
+      current: GUIDES_PAGE.slug,
+    }),
+  });
+
   const links = titles
     .map(({ slug, title }) => `<li><a href="/${slug}">${escapeHtml(title)}</a></li>`)
     .join('');
@@ -156,7 +231,7 @@ export function buildSite(read: (file: string) => string): BuiltFile[] {
     path: 'index.html',
     contents: layout({
       title: 'FirstPass HQ',
-      description: 'Privacy, support and account deletion for the FirstPass HQ app.',
+      description: 'Privacy, support, user guides and account deletion for the FirstPass HQ app.',
       body: `<h1>FirstPass HQ</h1>\n<p>FirstPass HQ is a club administration app for netball clubs. These pages are for members and for the app stores.</p>\n<ul>${links}</ul>`,
       current: null,
     }),

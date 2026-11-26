@@ -5,7 +5,7 @@ You can delete your FirstPass HQ account at any time, in the app.
 ## In the app
 
 1. Open FirstPass HQ and sign in to your club.
-2. Tap **Delete account** at the bottom of the home screen.
+2. Open the **Me** tab and tap **Delete account**.
 3. Read what will be deleted, then tap **Delete my account**.
 4. Tap **Delete my account permanently** to confirm.
 
