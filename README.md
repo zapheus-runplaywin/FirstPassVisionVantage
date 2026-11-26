@@ -8,7 +8,7 @@ Live netball stats. **FirstPass Vantage** is the statistician's tablet app for e
 | --- | --- |
 | `apps/vantage` | Expo tablet app for the statistician (Android first, then iPad and Mac), landscape, with keyboard shortcuts. See [its README](apps/vantage/README.md) |
 | `apps/vision` | Expo app for coaches: phone, tablet and web, portrait and landscape |
-| `apps/site` | FirstPass HQ's public pages for the app stores (privacy policy, support, delete my account), a static site on Expo Hosting |
+| `apps/site` | FirstPass HQ's public pages for the app stores (privacy policy, support, delete my account) and the list of user guides, a static site on Expo Hosting |
 | `plugins/vantage-deck` | Stream Deck plugin: a 32-key Stream Deck XL as Vantage's who, what and detail keys, from a Mac. See [its README](plugins/vantage-deck/README.md) |
 | `packages/engine` | Pure stats engine shared by both apps and published to npm: fold events into game state |
 | `packages/schema` | Event model shared by the apps and the database, published to npm |
@@ -88,5 +88,6 @@ The venue link (a game's events over the venue's own network, through FirstPass 
 The app stores need a public privacy policy, a support page and a page that tells people how to delete their account. They live in `apps/site`, a static site with no JavaScript, published to Expo Hosting's free plan at **https://firstpass-hq.expo.app** (`/privacy`, `/support`, `/delete-account`).
 
 - The words are written once, in the FirstPass HQ repo's `docs/store/public-pages/`, next to the store answers they must agree with. `scripts/sync-public-pages.sh [path to a FirstPassHQ checkout]` copies them into `apps/site/content/` verbatim, notes the HQ commit in `content/SOURCE.md` and builds the site to check it. Don't edit the copies here.
-- `pnpm --filter @firstpass/site build` writes `apps/site/dist` for a look in a browser. Tests check every page renders, runs no script and loads nothing from another site.
+- `/guides` lists the user guide for each role, in the FirstPass HQ edition and in West Coast Thunder's. The page is made here (`GUIDE_EDITIONS` and `GUIDE_ROLES` in `apps/site/src/site.ts`); the PDFs themselves are published by the FirstPass HQ repo's "Publish guides" workflow on GitHub Pages, under names that stay the same from one build to the next, because they are far too big for Expo Hosting's free plan. A new role or edition there is added to the lists here too (HQ `docs/pdfs/README.md`, "Published guides").
+- `pnpm --filter @firstpass/site build` writes `apps/site/dist` for a look in a browser. Tests check every page renders, runs no script and loads nothing from another site, and that the only links off the site are the guides and Google's help page.
 - To publish: **Actions → Deploy web → Run workflow**, app `site`. It tests and builds first, and refuses while any page still holds placeholder text. It needs the same `EXPO_TOKEN` secret as the builds. The first run creates the Expo project and fixes the address for good (Expo never releases a subdomain).

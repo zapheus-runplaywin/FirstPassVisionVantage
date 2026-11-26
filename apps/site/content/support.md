@@ -10,6 +10,10 @@ FirstPass HQ is the app netball clubs use to run the club. Here is how to get he
 
 FirstPass HQ is for people 13 and over. If you are under 18, the app stays locked until the club links your parent or guardian to you. Share the link code the app shows you with them.
 
+## User guides
+
+There is a user guide for each role, as a PDF: see [User guides](/guides). In the app, yours is under Help in the Me tab.
+
 ## Questions about your club
 
 Your role, your squad or team, the club password, approvals, and what the club records about you are all looked after by your club's admins. Ask them first.
@@ -22,7 +26,7 @@ To raise a concern about a child's safety, use Raise a concern in the app, or co
 
 ## Deleting your account
 
-Delete account is at the bottom of the home screen. See [Delete your account](/delete-account) for the steps and for what the club keeps.
+Delete account is in the Me tab. See [Delete your account](/delete-account) for the steps and for what the club keeps.
 
 ## Bringing FirstPass HQ to your club
 
