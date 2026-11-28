@@ -26,7 +26,7 @@ To raise a concern about a child's safety, use Raise a concern in the app, or co
 
 ## Deleting your account
 
-Delete account is in the Me tab. See [Delete your account](/delete-account) for the steps and for what the club keeps.
+Delete my account is under My account in the Me tab. See [Delete your account](/delete-account) for the steps and for what the club keeps.
 
 ## Bringing FirstPass HQ to your club
 

@@ -1,6 +1,6 @@
 # FirstPass HQ privacy policy
 
-Last updated: 25 November 2026
+Last updated: 28 November 2026
 
 FirstPass HQ is an app that netball clubs use to run the club: messages, attendance, injuries, Working With Children Checks and child safety. This policy explains what the app keeps about you, why, who can see it, how long it is kept, and how to have it deleted.
 
@@ -24,6 +24,8 @@ Only what the club needs to run. Depending on your role, that is:
 - **Safeguarding records:** concerns, stand-downs, Screening Unit notices, parents' consents, code of conduct acceptances and policy acknowledgements.
 - **A record of who opened a child's records,** and when, so parents can see it.
 - **Blocks in chat groups:** who blocked whom, when, in which group, and how the club followed it up.
+- **Selection assessments,** if your club uses them: what a selection round's selectors write about each athlete (what they saw, and where the athlete stands against the club's criteria), each selector's signed summary, and any feedback or assessment the head coach shares with the athlete.
+- **Events on the club's calendar** that coaches, managers and admins add in the app, with the name of whoever added, changed or cancelled each one.
 - **A notification token** for your phone, if you allow notifications.
 
 The app does not use your location, your contacts or your phone's calendar. It has no advertising, no analytics and no tracking, and we never sell or rent your information. The app keeps a short technical log on your phone to help find faults; it never leaves the phone and has names, emails and health details removed.
@@ -37,6 +39,8 @@ To run the club: to sign you in, put you in the right squads and teams, send clu
 - **Club members see only what their role allows,** and the database itself enforces it. For example, a coach sees their own team's attendance and injuries; a parent sees only their own child.
 - **For athletes under 18,** coaches, physios and the committee see the child's check-ins and injuries only after a verified parent or guardian consents in the app, and parents can withdraw that consent at any time. Parents' access ends on their child's 18th birthday.
 - **Concerns** are seen by the club's Child Safety Officer, Complaints Manager and admins, never by the person a concern is about.
+- **Selection assessments** are read only by the selectors on that selection round's panel and by the round's auditors, who are committee members the club's admins choose and who can't change anything. Each holds a current Working With Children Check, and none can read their own child's. The athlete, and the verified parents of an athlete under 18, see what the head coach chooses to share. The club's admins see how much was written and when, not what it says.
+- **A calendar's phone link:** a club can turn on a link for a calendar it shows to every member, so members can see it in their phone's own calendar. Anyone who has the link can read that calendar's event names, times and places without signing in. It never includes a person's name or an event's notes, and the club can reset it or turn it off.
 - **FirstPass** can technically read a club's data. We open it only to fix a fault, to make a copy the club asked for, or when the law requires it, and we tell the club's admins when we have.
 - **Live streams:** if your club streams games with FirstPass Studio, an athlete's name and game stats are shown only with consent, given by a verified parent for an athlete under 18.
 - Information isn't shared outside the club except with the Police or the sport's governing body when a child's safety requires it, with the Working with Children Screening Unit to check a card, or where the law requires.
@@ -67,6 +71,7 @@ Each club chooses how long it keeps each kind of record, and nothing is removed 
 - daily check-ins and training sessions: 1 year;
 - attendance, absences and session plans: 1 year;
 - game goals and reflections: 1 year;
+- selection assessments: 1 year after the selection round ends;
 - message and chat group post text: 3 years, or 7 years when a child sent or received it;
 - blocks in chat groups: until either member's account is deleted;
 - injury letters and reports: 1 year after the injury is cleared;
